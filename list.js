@@ -12,8 +12,8 @@
 // specific language governing permissions and limitations under the License.
 
 const __debug = false
-const __log = (info) => __debug ? console.log(info) : void(0)
-const __warn = (warn) => console.warn(warn)
+const __log = info => __debug ? console.log(info) : void(0)
+const __warn = warn => console.warn(warn)
 const deepCopy = source => JSON.parse(JSON.stringify(source))
 const isNullPtr = ptr => ptr === undefined || ptr === null
 const defaultEqu = (a, b) => a === b
@@ -239,8 +239,10 @@ class list {
   get const_end() {
     return deepCopy(this.TailNode._data)
   }
-  // itor
-  // callback: param index, param node, return -1 to stop looping
+  /**
+   * @desc forward iterator
+   * @param {Function} callback - callback function to handle the index and node while iterating, return -1 to break the iterator loop
+   */
   itr(callback) {
     let p = null
     let index = -1
@@ -252,8 +254,10 @@ class list {
         break
     } while (!isNullPtr(p.nextPtr))
   }
-  // reverse itor
-  // callback: param index, param node, return -1 to stop looping
+  /**
+   * @desc reverse iterator
+   * @param {Function} callback - callback function to handle the index and node while iterating, return -1 to break the iterator loop
+   */
   reverse_itr(callback) {
     let p = null
     let index = this.size()
@@ -451,7 +455,7 @@ class list {
     }
     quick_sort(this.HeadNode, this.HeadNode, this.TailNode)
   }
-  // equFunc: callback function, @param node->_data, finded while return true
+  // equFunc: callback function, @param node->_data, return true while finded the target node
   find(equFunc) {
     if (!(equFunc instanceof Function)) {
       return undefined
