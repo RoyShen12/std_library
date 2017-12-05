@@ -586,14 +586,16 @@ class list {
   }
   // 两个容器交换
   swap(anotherListRef) {
-    const pHead = this.HeadNode
-    const pTail = this.TailNode
-    const pLength = this._length
-    this.HeadNode = anotherListRef.HeadNode
-    this.TailNode = anotherListRef.TailNode
-    this._length = anotherListRef._length
-    anotherListRef.HeadNode = pHead
-    anotherListRef.TailNode = pTail
-    anotherListRef._length = pLength
+    if (anotherListRef instanceof list) {
+      const pHead = this.HeadNode
+      const pTail = this.TailNode
+      const pLength = this._length
+      this.HeadNode = anotherListRef.HeadNode
+      this.TailNode = anotherListRef.TailNode
+      this._length = anotherListRef._length
+      anotherListRef.HeadNode = pHead
+      anotherListRef.TailNode = pTail
+      anotherListRef._length = pLength
+    }
   }
 }
