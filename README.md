@@ -1,2 +1,2 @@
 # std_library
-an JavaScript container library
+a JavaScript container library
