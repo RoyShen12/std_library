@@ -1,3 +1,16 @@
+// 
+// Copyright (C) 2017 Roy Shen. All rights reserved.
+//
+// Licensed under the MIT License (the "License"); you may not use this file except
+// in compliance with the License. You may obtain a copy of the License at
+//
+// http://opensource.org/licenses/MIT
+//
+// Unless required by applicable law or agreed to in writing, software distributed 
+// under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR 
+// CONDITIONS OF ANY KIND, either express or implied. See the License for the 
+// specific language governing permissions and limitations under the License.
+
 const __debug = false
 const __log = (info) => __debug ? console.log(info) : void(0)
 const __warn = (warn) => console.warn(warn)
@@ -5,33 +18,34 @@ const deepCopy = source => JSON.parse(JSON.stringify(source))
 const isNullPtr = ptr => ptr === undefined || ptr === null
 const defaultEqu = (a, b) => a === b
 const defaultLess = (a, b) => a < b
-
+/**
+ * @desc the node structure to composite a list
+ * @private {any} _data - element of the node
+ * @private {Node} previousPtr - previous node
+ * @private {Node} nextPtr - next node
+ */
 class Node {
-  //_data
-  //forwardPtr
-  //nextPtr
-
   constructor(elem, frontElem, nextElem) {
     this._data = elem
-    this.forwardPtr = frontElem
+    this.previousPtr = frontElem
     this.nextPtr = nextElem
   }
 }
-
+/**
+ * @desc the list container
+ * @private {Node} HeadNode - first node | null
+ * @private {Node} TailNode - last node | null
+ * @private {Number} _length - size of list 
+ */
 class list {
-  //HeadNode
-  //TailNode
-  //_length
-
   constructor(elem) {
-    // 空构造函数
-    if (isNullPtr(elem)) {
+    if (isNullPtr(elem)) {  // empty constructor
       __log('empty constructor')
       this.HeadNode = null
       this.TailNode = null
       this._length = 0
     } else {
-      if (elem instanceof list) { // 复制构造函数
+      if (elem instanceof list) { // copy constructor
         __log('copy constructor')
         this.HeadNode = null
         this.TailNode = null
@@ -39,7 +53,7 @@ class list {
         elem.itr((index, node) => {
           this.pushBack(deepCopy(node._data))
         })
-      } else if (elem instanceof Array) { // 数组复制构造函数
+      } else if (elem instanceof Array) { // copy from array constructor
         __log('array copy constructor')
         this.HeadNode = null
         this.TailNode = null
@@ -47,7 +61,7 @@ class list {
         for (let e of elem) {
           this.pushBack(e)
         }
-      } else {  // 常规构造函数
+      } else {  // single element pushing constructor
         __log('default constructor')
         const node = new Node(elem, null, null)
         this.HeadNode = node
@@ -57,7 +71,7 @@ class list {
     }
   }
 
-  // 通过位置获取元素引用
+  // get element reference by index
   at(rInd) {
     const __size = this.size()
     let res = undefined
@@ -82,7 +96,7 @@ class list {
     }
     return res
   }
-  // 通过位置获取元素拷贝
+  // get element copy by index
   const_at(rInd) {
     const __size = this.size()
     let res = undefined
@@ -107,13 +121,13 @@ class list {
     }
     return res
   }
-  // 以给定值为容器填充
+  // fill list with giving element
   fill(elem) {
     this.itr((index, node) => {
       node._data = elem
     })
   }
-  // 插入元素到最前
+  
   pushFront(elem) {
     if (isNullPtr(elem)) {
       __log('push front failed with null ptr')
@@ -121,7 +135,7 @@ class list {
     }
     const node = new Node(elem, null, this.HeadNode)
     if (this.HeadNode !== null) {
-      this.HeadNode.forwardPtr = node
+      this.HeadNode.previousPtr = node
     }
     this.HeadNode = node
     // if this is empty
@@ -132,7 +146,7 @@ class list {
       __log('push front: new node:')
     __log(node)
   }
-  // 插入元素到最后
+  
   pushBack(elem) {
     if (isNullPtr(elem)) {
       __warn('push front failed with null ptr')
@@ -151,7 +165,7 @@ class list {
       __log('push back: new node:')
     __log(node)
   }
-  // 任意位置插入元素
+  
   insert(elem, position) {
     if (typeof (position) !== 'number' || position < 0 || position > this.size() || isNullPtr(elem)) {
       __warn('push front failed with null ptr or null/error position or position range error')
@@ -169,11 +183,11 @@ class list {
       if (position < this.size() / 2) {
         this.itr((index, p) => {
           if (index === position) {
-            const pForward = p.forwardPtr
+            const pForward = p.previousPtr
             const pNext = p.nextPtr
             const node = new Node(elem, pForward, pNext)
             pForward.nextPtr = node
-            pNext.forwardPtr = node
+            pNext.previousPtr = node
             this._length++
               return -1
           }
@@ -181,11 +195,11 @@ class list {
       } else {
         this.reverse_itr((index, p) => {
           if (index === position) {
-            const pForward = p.forwardPtr
+            const pForward = p.previousPtr
             const pNext = p.nextPtr
             const node = new Node(elem, pForward, pNext)
             pForward.nextPtr = node
-            pNext.forwardPtr = node
+            pNext.previousPtr = node
             this._length++
               return -1
           }
@@ -193,39 +207,39 @@ class list {
       }
     }
   }
-  // 丢弃前端一个元素
+  
   popFront() {
     if (this.HeadNode !== null) {
-      this.HeadNode.nextPtr.forwardPtr = null
+      this.HeadNode.nextPtr.previousPtr = null
       this.HeadNode = this.HeadNode.nextPtr
       this._length--
     }
   }
-  // 丢弃后端一个元素
+  
   popBack() {
     if (this.TailNode !== null) {
-      this.TailNode.forwardPtr.nextPtr = null
-      this.TailNode = this.TailNode.forwardPtr
+      this.TailNode.previousPtr.nextPtr = null
+      this.TailNode = this.TailNode.previousPtr
       this._length--
     }
   }
-  // 获得头部元素的引用
+  
   get begin() {
     return this.HeadNode._data
   }
-  // 获得尾部元素的引用
+  
   get end() {
     return this.TailNode._data
   }
-  // 获得头部元素的拷贝
+  
   get const_begin() {
     return deepCopy(this.HeadNode._data)
   }
-  // 获得尾部元素的拷贝
+  
   get const_end() {
     return deepCopy(this.TailNode._data)
   }
-  // 正向迭代器
+  // itor
   // callback: param index, param node, return -1 to stop looping
   itr(callback) {
     let p = null
@@ -238,20 +252,20 @@ class list {
         break
     } while (!isNullPtr(p.nextPtr))
   }
-  // 反向迭代器
+  // reverse itor
   // callback: param index, param node, return -1 to stop looping
   reverse_itr(callback) {
     let p = null
     let index = this.size()
     do {
-      p === null ? p = this.TailNode : p = p.forwardPtr
+      p === null ? p = this.TailNode : p = p.previousPtr
       index--
       let cmd = callback(index, p)
       if (cmd === -1)
         break
-    } while (!isNullPtr(p.forwardPtr))
+    } while (!isNullPtr(p.previousPtr))
   }
-  // 正序全部元素的引用（数组）
+  // array of data reference
   get data() {
     let data = []
     this.itr((index, node) => {
@@ -259,7 +273,7 @@ class list {
     })
     return data
   }
-  // 逆序全部元素的引用（数组）
+  // array of reversed data reference
   get reverse_data() {
     let data = []
     this.reverse_itr((index, node) => {
@@ -267,7 +281,7 @@ class list {
     })
     return data
   }
-  // 正序全部元素的拷贝（数组）
+  // array of data copy
   get const_data() {
     let data = []
     this.itr((index, node) => {
@@ -275,7 +289,7 @@ class list {
     })
     return data
   }
-  // 逆序全部元素的拷贝（数组）
+  // array of reversed data copy
   get const_reverse_data() {
     let data = []
     this.reverse_itr((index, node) => {
@@ -283,7 +297,7 @@ class list {
     })
     return data
   }
-  // 获取容器元素个数
+  
   size() {
     let counter
     // #ifdef __DEBUG
@@ -303,15 +317,15 @@ class list {
     }
     return counter
   }
-  // 获取容器元素个数
+  
   get length() {
     return this.size()
   }
-  // 返回容器是否为空
+  
   empty() {
     return this.size() === 0
   }
-  // 移除指定位置元素
+  
   remove(position) {
     if (typeof (position) !== 'number') {
       __warn('push front failed with null/error position')
@@ -331,22 +345,22 @@ class list {
         this.TailNode = null
         this._length--
       } else {
-        this.HeadNode.nextPtr.forwardPtr = null
+        this.HeadNode.nextPtr.previousPtr = null
         this.HeadNode = this.HeadNode.nextPtr
         this._length--
       }
     } else if (position === this.size() - 1) {
-      this.TailNode.forwardPtr.nextPtr = null
-      this.TailNode = this.TailNode.forwardPtr
+      this.TailNode.previousPtr.nextPtr = null
+      this.TailNode = this.TailNode.previousPtr
       this._length--
     } else {
       if (position < this.size() / 2) {
         this.itr((index, p) => {
           if (index === position) {
-            const pForward = p.forwardPtr
+            const pForward = p.previousPtr
             const pNext = p.nextPtr
             pForward.nextPtr = pNext
-            pNext.forwardPtr = pForward
+            pNext.previousPtr = pForward
             this._length--
               return -1
           }
@@ -354,10 +368,10 @@ class list {
       } else {
         this.reverse_itr((index, p) => {
           if (index === position) {
-            const pForward = p.forwardPtr
+            const pForward = p.previousPtr
             const pNext = p.nextPtr
             pForward.nextPtr = pNext
-            pNext.forwardPtr = pForward
+            pNext.previousPtr = pForward
             this._length--
               return -1
           }
@@ -365,14 +379,14 @@ class list {
       }
     }
   }
-  // 移除全部元素
+  
   clear() {
     this._length = 0
     this.HeadNode = null
     this.TailNode = null
     __log('clear over')
   }
-  // 颠倒所有元素
+  
   reverse() {
     let tmp = null
     if (this.size() < 2) {
@@ -387,14 +401,14 @@ class list {
     })
     for (let _n of nodeArr) {
       if (_n.i === 0) {
-        _n.node.forwardPtr = _n.node.nextPtr
+        _n.node.previousPtr = _n.node.nextPtr
         _n.node.nextPtr = null
       } else if (_n.i === this.size() - 1) {
-        _n.node.nextPtr = _n.node.forwardPtr
-        _n.node.forwardPtr = null
+        _n.node.nextPtr = _n.node.previousPtr
+        _n.node.previousPtr = null
       } else {
-        tmp = _n.node.forwardPtr
-        _n.node.forwardPtr = _n.node.nextPtr
+        tmp = _n.node.previousPtr
+        _n.node.previousPtr = _n.node.nextPtr
         _n.node.nextPtr = tmp
       }
     }
@@ -402,14 +416,14 @@ class list {
     this.HeadNode = this.TailNode
     this.TailNode = tmp
   }
-  // 排序 cmpFunc为比较函数
+  // quick sorting, may be unstable
   sort(cmpFunc = defaultLess) {
     // define partion and qsort function
     const partion = (pHead, pLow, pHigh) => {
       const pivot = pLow._data
       while (pLow !== pHigh) {
         while (pLow !== pHigh && !cmpFunc(pHigh._data, pivot))
-          pHigh = pHigh.forwardPtr
+          pHigh = pHigh.previousPtr
         let temp = pLow._data
         pLow._data = pHigh._data
         pHigh._data = temp
@@ -425,7 +439,7 @@ class list {
       let pstTmp = null
       pstTmp = partion(pstHead, pstLow, pstHigh)
       if (pstLow !== pstTmp) {
-        quick_sort(pstHead, pstLow, pstTmp.forwardPtr)
+        quick_sort(pstHead, pstLow, pstTmp.previousPtr)
       }
       if (pstHigh !== pstTmp) {
         quick_sort(pstHead, pstTmp.nextPtr, pstHigh)
@@ -437,7 +451,7 @@ class list {
     }
     quick_sort(this.HeadNode, this.HeadNode, this.TailNode)
   }
-  // 查找目标元素 equFunc为相等回调函数
+  // equFunc: callback function, @param node->_data, finded while return true
   find(equFunc) {
     if (!(equFunc instanceof Function)) {
       return undefined
@@ -451,7 +465,7 @@ class list {
     })
     return res
   }
-  // 从指定位置开始查找目标元素 equFunc为相等回调函数
+  
   findFrom(pos, equFunc) {
     if (typeof (pos) !== 'number' || pos < 0 || pos > this.size() - 1 || !Number.isInteger(pos)) {
       __warn('wrong param error: "position", should be an integer between 0 and length-1')
@@ -469,7 +483,7 @@ class list {
     })
     return res
   }
-  // 查找目标元素位置 equFunc为相等回调函数
+  
   findIndex(equFunc) {
     if (!(equFunc instanceof Function)) {
       return -1
@@ -483,7 +497,7 @@ class list {
     })
     return res
   }
-  // 从指定位置开始查找目标元素位置 equFunc为相等回调函数
+  
   findIndexFrom(pos, equFunc) {
     if (typeof (pos) !== 'number' || pos < 0 || pos > this.size() - 1 || !Number.isInteger(pos)) {
       __warn('wrong param error: "position", should be an integer between 0 and length-1')
@@ -501,7 +515,7 @@ class list {
     })
     return res
   }
-  // 与目标容器在尾部拼接
+  
   back_concat(anotherListRef) {
     if (anotherListRef instanceof list) {
       if (anotherListRef._length === 0 || anotherListRef.HeadNode === null || anotherListRef.TailNode === null) {
@@ -509,25 +523,25 @@ class list {
         return
       }
       this.TailNode.nextPtr = anotherListRef.HeadNode
-      anotherListRef.HeadNode.forwardPtr = this.TailNode
+      anotherListRef.HeadNode.previousPtr = this.TailNode
       this.TailNode = anotherListRef.TailNode
       this._length += anotherListRef._length
     }
   }
-  // 与目标容器在头部拼接
+
   front_concat(anotherListRef) {
     if (anotherListRef instanceof list) {
       if (anotherListRef._length === 0 || anotherListRef.HeadNode === null || anotherListRef.TailNode === null) {
         __warn('bad concat target')
         return
       }
-      this.HeadNode.forwardPtr = anotherListRef.TailNode
+      this.HeadNode.previousPtr = anotherListRef.TailNode
       anotherListRef.TailNode.nextPtr = this.HeadNode
       this.HeadNode = anotherListRef.HeadNode
       this._length += anotherListRef._length
     }
   }
-  // 与目标容器在指定位置拼接
+
   concat(anotherListRef, position) {
     if (anotherListRef instanceof list) {
       if (anotherListRef === this) {
@@ -560,8 +574,8 @@ class list {
               const pForward = p
               const pNext = p.nextPtr
               pForward.nextPtr = anotherListRef.HeadNode
-              pNext.forwardPtr = anotherListRef.TailNode
-              anotherListRef.HeadNode.forwardPtr = pForward
+              pNext.previousPtr = anotherListRef.TailNode
+              anotherListRef.HeadNode.previousPtr = pForward
               anotherListRef.TailNode.nextPtr = pNext
               this._length += anotherListRef._length
               return -1
@@ -573,8 +587,8 @@ class list {
               const pForward = p
               const pNext = p.nextPtr
               pForward.nextPtr = anotherListRef.HeadNode
-              pNext.forwardPtr = anotherListRef.TailNode
-              anotherListRef.HeadNode.forwardPtr = pForward
+              pNext.previousPtr = anotherListRef.TailNode
+              anotherListRef.HeadNode.previousPtr = pForward
               anotherListRef.TailNode.nextPtr = pNext
               this._length += anotherListRef._length
               return -1
@@ -584,7 +598,7 @@ class list {
       }
     }
   }
-  // 两个容器交换
+  
   swap(anotherListRef) {
     if (anotherListRef instanceof list) {
       const pHead = this.HeadNode
@@ -599,3 +613,6 @@ class list {
     }
   }
 }
+
+// uncomment next line when in webpack environment
+// export default list
