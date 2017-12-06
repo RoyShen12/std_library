@@ -88,7 +88,7 @@ class list {
       __warn('error index')
       return undefined
     }
-    ~~rind
+    rInd = ~~rInd
     if (rInd < __size / 2) {
       this.itr((index, node) => {
         if (index === rInd) {
@@ -114,7 +114,7 @@ class list {
       __warn('error index')
       return undefined
     }
-    ~~rind
+    rInd = ~~rInd
     if (rInd < __size / 2) {
       this.itr((index, node) => {
         if (index === rInd) {
@@ -183,7 +183,7 @@ class list {
       __warn('push front failed with null ptr or null/error position or position range error')
       return
     }
-    ~~position
+    position=~~position
     if (position === 0) {
       this.pushFront(elem)
     } else if (position === this.size()) {
@@ -391,7 +391,7 @@ class list {
       __warn('push front failed with null/error position')
       return
     }
-    ~~position
+    position=~~position
     if (position < 0 || position >= this.size()) {
       __warn('position range exceed')
       return
@@ -537,7 +537,7 @@ class list {
     if (!(equFunc instanceof Function)) {
       return undefined
     }
-    ~~pos
+    pos=~~pos
     let res = undefined
     this.itr((index, node) => {
       if (equFunc(node._data) && index >= pos) {
@@ -570,7 +570,7 @@ class list {
     if (!(equFunc instanceof Function)) {
       return -1
     }
-    ~~pos
+    pos=~~pos
     let res = -1
     this.itr((index, node) => {
       if (equFunc(node._data) && index >= pos) {
@@ -620,7 +620,7 @@ class list {
         __warn('push front failed with null/error position or position range error')
         return
       }
-      ~~position
+      position=~~position
       if (position === 0) {
         this.front_concat(anotherListRef)
       } else if (position === this.size()) {
