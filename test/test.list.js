@@ -1,6 +1,6 @@
 // mocha unit test
 const expect = chai.expect
-const insertSeperator = '------------------------------'
+const insertSeperator = ' ------------------------------ '
 // test
 const anyArr = [-1, 0, 1, 141.215, 0.000151, {}, {
   a: 1,
@@ -33,7 +33,7 @@ const emptyInst = new list()
 const boolInst = new list()
 const strInst = new list()
 
-describe('list test: ', () => {
+describe('class list test: ', () => {
   it('list::constructor(integer)'+insertSeperator+'works correctly', () => {
     let i = 0
     instB.pushBack(1)
@@ -125,6 +125,10 @@ describe('list test: ', () => {
     expect(instB.at(1.25125)).to.deep.equal(instB.at(1))
     expect(instB.at(1.95125)).to.deep.equal(instB.at(1))
   })
+  it('list::at(<type error>) test ::at(undefined)'+insertSeperator+'check correctly', () => {
+    expect(instB.at()).to.equal(undefined)
+    expect(instB.at()).to.equal(undefined)
+  })
   it('list<object>::const_at(index)'+insertSeperator+'returns const copies correctly', () => {
     instA.at(2).a = 100
     instA.const_at(1).a = 100
@@ -189,5 +193,12 @@ describe('list test: ', () => {
     expect(cpi.at(2)).to.deep.equal(anyArr)
     expect(cpi.at(3)).to.deep.equal(anyArr)
     expect(cpi.at(4)).to.deep.equal(anyArr)
+  })
+  it('list::fill(undefined | null | NaN)'+insertSeperator+'works correctly', () => {
+    const cpi = new list(instA)
+    cpi.fill()
+    let i = cpi.size() - 1
+    while (i-- > 0)
+      expect(cpi.at(i)).to.equal(undefined)
   })
 })
