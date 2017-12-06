@@ -12,8 +12,17 @@
 // specific language governing permissions and limitations under the License.
 
 const __debug = false
+const swap = (a, b) => {
+  const t = a
+  a = b
+  b = t
+}
 const __log = info => __debug ? console.log(info) : void(0)
 const __warn = warn => console.warn(warn)
+const inRange = (target, rangeS, rangeE) => target > rangeS && target < rangeE
+const inRangeL = (target, rangeS, rangeE) => target >= rangeS && target < rangeE
+const inRangeR = (target, rangeS, rangeE) => target > rangeS && target <= rangeE
+const inRangeLR = (target, rangeS, rangeE) => target >= rangeS && target <= rangeE
 const deepCopy = source => JSON.parse(JSON.stringify(source))
 const isNullPtr = ptr => ptr === undefined || ptr === null
 const defaultEqu = (a, b) => a === b
@@ -39,7 +48,7 @@ class Node {
  */
 class list {
   constructor(elem) {
-    if (isNullPtr(elem)) {  // empty constructor
+    if (isNullPtr(elem)) { // empty constructor
       __log('empty constructor')
       this.HeadNode = null
       this.TailNode = null
@@ -61,7 +70,7 @@ class list {
         for (let e of elem) {
           this.pushBack(e)
         }
-      } else {  // single element pushing constructor
+      } else { // single element pushing constructor
         __log('default constructor')
         const node = new Node(elem, null, null)
         this.HeadNode = node
@@ -75,7 +84,7 @@ class list {
   at(rInd) {
     const __size = this.size()
     let res = undefined
-    if (typeof (rInd) !== 'number' || rInd < 0 || rInd > __size - 1 || !Number.isInteger(rInd)) {
+    if (typeof (rInd) !== 'number' || !inRangeLR(rInd, 0, __size) || !Number.isInteger(rInd)) {
       __warn('error index')
       return undefined
     }
@@ -100,7 +109,7 @@ class list {
   const_at(rInd) {
     const __size = this.size()
     let res = undefined
-    if (typeof (rInd) !== 'number' || rInd < 0 || rInd > __size - 1 || !Number.isInteger(rInd)) {
+    if (typeof (rInd) !== 'number' || !inRangeLR(rInd, 0, __size) || !Number.isInteger(rInd)) {
       __warn('error index')
       return undefined
     }
@@ -122,12 +131,13 @@ class list {
     return res
   }
   // fill list with giving element
-  fill(elem) {
+  fill(elem, start = 0, end = this.size()) {
     this.itr((index, node) => {
-      node._data = elem
+      if (inRangeLR(index, start, end))
+        node._data = elem
     })
   }
-  
+
   pushFront(elem) {
     if (isNullPtr(elem)) {
       __log('push front failed with null ptr')
@@ -146,7 +156,7 @@ class list {
       __log('push front: new node:')
     __log(node)
   }
-  
+
   pushBack(elem) {
     if (isNullPtr(elem)) {
       __warn('push front failed with null ptr')
@@ -165,9 +175,9 @@ class list {
       __log('push back: new node:')
     __log(node)
   }
-  
+
   insert(elem, position) {
-    if (typeof (position) !== 'number' || position < 0 || position > this.size() || isNullPtr(elem)) {
+    if (typeof (position) !== 'number' || !inRangeLR(position, 0, this.size()) || isNullPtr(elem)) {
       __warn('push front failed with null ptr or null/error position or position range error')
       return
     }
@@ -207,7 +217,7 @@ class list {
       }
     }
   }
-  
+
   popFront() {
     if (this.HeadNode !== null) {
       this.HeadNode.nextPtr.previousPtr = null
@@ -215,7 +225,7 @@ class list {
       this._length--
     }
   }
-  
+
   popBack() {
     if (this.TailNode !== null) {
       this.TailNode.previousPtr.nextPtr = null
@@ -223,19 +233,19 @@ class list {
       this._length--
     }
   }
-  
+
   get begin() {
     return this.HeadNode._data
   }
-  
+
   get end() {
     return this.TailNode._data
   }
-  
+
   get const_begin() {
     return deepCopy(this.HeadNode._data)
   }
-  
+
   get const_end() {
     return deepCopy(this.TailNode._data)
   }
@@ -269,6 +279,33 @@ class list {
         break
     } while (!isNullPtr(p.previousPtr))
   }
+  // specifies the default iterator for list
+  // make list able to called by for...of
+  // the returns value is const node->_data
+  [Symbol.iterator]() {
+    if (this.size() === 0) {
+      return {
+        next() {
+          return {
+            done: true
+          }
+        }
+      }
+    } else {
+      let thisIns = this
+      let p = null
+      return {
+        next() {
+          p === null ? p = thisIns.HeadNode : p = p.nextPtr
+          let f = p === null
+          return {
+            value: f ? null : p._data,
+            done: f ? true : false
+          }
+        }
+      }
+    }
+  }
   // array of data reference
   get data() {
     let data = []
@@ -301,10 +338,30 @@ class list {
     })
     return data
   }
-  
+  // do callback(elem) for every node->_data
+  // for example x.foreach( (x)=>x=x*x )
+  foreach(callback, start = 0, end = this.size() - 1) {
+    if (!this.empty()) {
+      this.itr((index, node) => {
+        if (inRangeLR(index, start, end))
+          callback(node._data)
+      })
+    }
+  }
+  // The map() method creates a new list
+  // with the results of calling callback function on every element in the calling list.
+  map(callback) {
+    const lp = new list()
+    if (!this.empty()) {
+      this.itr((index, node) => {
+        lp.pushBack(callback(node._data))
+      })
+    }
+    return lp
+  }
+  // return the size of calling list
   size() {
     let counter
-    // #ifdef __DEBUG
     if (__debug) {
       let node = this.HeadNode
       if (node === null) {
@@ -321,15 +378,15 @@ class list {
     }
     return counter
   }
-  
+
   get length() {
     return this.size()
   }
-  
+
   empty() {
     return this.size() === 0
   }
-  
+  // remove a node by specifying it's index
   remove(position) {
     if (typeof (position) !== 'number') {
       __warn('push front failed with null/error position')
@@ -383,16 +440,26 @@ class list {
       }
     }
   }
-  
+  /**
+   * @desc remove a segment of nodes and replace with given elements
+   * @param {Number} index - index at which to start changing the list (with origin 0)
+   * @param {Number} [deleteCount] - An integer indicating the number of old list elements to remove
+   * @param {any[]} [elems] - the elements to add to the list, beginning at the start index, 
+   * if you don't specify any elements, splice() will only remove elements from the array
+   * @returns {any[]} a list containing the deleted elements, if no elements are removed, an empty list is returned
+   */
+  splice(index = 0, deleteCount = this.size(), ...elems){
+    // to do
+  }
+  // remove all nodes
   clear() {
     this._length = 0
     this.HeadNode = null
     this.TailNode = null
     __log('clear over')
   }
-  
+
   reverse() {
-    let tmp = null
     if (this.size() < 2) {
       return
     }
@@ -411,14 +478,10 @@ class list {
         _n.node.nextPtr = _n.node.previousPtr
         _n.node.previousPtr = null
       } else {
-        tmp = _n.node.previousPtr
-        _n.node.previousPtr = _n.node.nextPtr
-        _n.node.nextPtr = tmp
+        swap(_n.node.previousPtr, _n.node.nextPtr)
       }
     }
-    tmp = this.HeadNode
-    this.HeadNode = this.TailNode
-    this.TailNode = tmp
+    swap(this.HeadNode, this.TailNode)
   }
   // quick sorting, may be unstable
   sort(cmpFunc = defaultLess) {
@@ -469,9 +532,9 @@ class list {
     })
     return res
   }
-  
+
   findFrom(pos, equFunc) {
-    if (typeof (pos) !== 'number' || pos < 0 || pos > this.size() - 1 || !Number.isInteger(pos)) {
+    if (typeof (pos) !== 'number' || !inRangeLR(pos, 0, this.size()) || !Number.isInteger(pos)) {
       __warn('wrong param error: "position", should be an integer between 0 and length-1')
       return undefined
     }
@@ -487,7 +550,7 @@ class list {
     })
     return res
   }
-  
+
   findIndex(equFunc) {
     if (!(equFunc instanceof Function)) {
       return -1
@@ -501,9 +564,9 @@ class list {
     })
     return res
   }
-  
+
   findIndexFrom(pos, equFunc) {
-    if (typeof (pos) !== 'number' || pos < 0 || pos > this.size() - 1 || !Number.isInteger(pos)) {
+    if (typeof (pos) !== 'number' || !inRangeLR(pos, 0, this.size()) || !Number.isInteger(pos)) {
       __warn('wrong param error: "position", should be an integer between 0 and length-1')
       return -1
     }
@@ -519,7 +582,7 @@ class list {
     })
     return res
   }
-  
+
   back_concat(anotherListRef) {
     if (anotherListRef instanceof list) {
       if (anotherListRef._length === 0 || anotherListRef.HeadNode === null || anotherListRef.TailNode === null) {
@@ -555,7 +618,7 @@ class list {
       if (position === undefined) {
         this.back_concat(anotherListRef)
       }
-      if (typeof (position) !== 'number' || position < 0 || position > this.size()) {
+      if (typeof (position) !== 'number' || !inRangeLR(position, 0, this.size())) {
         __warn('push front failed with null/error position or position range error')
         return
       }
@@ -602,7 +665,7 @@ class list {
       }
     }
   }
-  
+
   swap(anotherListRef) {
     if (anotherListRef instanceof list) {
       const pHead = this.HeadNode
