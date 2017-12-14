@@ -79,25 +79,6 @@ class list {
             }
         }
     }
-    // protect the private property
-    //get HeadNode() {
-    //    return null
-    //}
-    //set HeadNode(input) {
-    //    return null
-    //}
-    //get TailNode() {
-    //    return null
-    //}
-    //set TailNode(input) {
-    //    return null
-    //}
-    //get _length() {
-    //    return null
-    //}
-    //set _length(input) {
-    //    return null
-    //}
     // get element reference by index
     at(rInd) {
         const __size = this.size()
