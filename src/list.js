@@ -11,14 +11,20 @@
 // CONDITIONS OF ANY KIND, either express or implied. See the License for the 
 // specific language governing permissions and limitations under the License.
 
+// I don't like the foolish and bumptious eslint, so
+/* eslint-disable */
+
+// the debug flag
 const __debug = false
+// reference swap function
 const swap = (a, b) => {
     const t = a
     a = b
     b = t
 }
-const __log = info => __debug ? console.log(info) : void (0)
-const __warn = warn => console.warn(warn)
+const __log = (...info) => __debug && console ? console.log(...info) : void (0)
+const __warn = (...warn) => console ? console.warn(...warn) : void (0)
+const __error = (...err) => console ? console.error(...err) : void(0)
 const inRange = (target, rangeS, rangeE) => target > rangeS && target < rangeE
 const inRangeL = (target, rangeS, rangeE) => target >= rangeS && target < rangeE
 const inRangeR = (target, rangeS, rangeE) => target > rangeS && target <= rangeE
@@ -28,7 +34,10 @@ const isNullPtr = ptr => ptr === undefined || ptr === null
 const defaultEqu = (a, b) => a === b
 const defaultLess = (a, b) => a < b
 /**
- * the node structure to composite a list
+ * - the node structure to composite a list
+ * 
+ *  <--[previousPtr]-- ( Node: ( _data ) ) --[nextPtr]-->
+ * 
  * @private {any} _data - element of the node
  * @private {Node} previousPtr - previous node
  * @private {Node} nextPtr - next node
@@ -41,15 +50,48 @@ class Node {
     }
 }
 /**
- * the list container
+ * - the list container
+ * 
+ * - list structure is like this:
+ * 
+ *  ( null )
+ *      Λ
+ *      |
+ * [previousPtr]
+ *      |
+ *  ( HeadNode: (_data) ) --[nextPtr]--> ( *Node: (_data) ) --[nextPtr]--> ...... --[nextPtr]--> ( TailNode: (_data) ) --[nextPtr]--> ( null )
+ *                       <--[previousPtr]--                <--[previousPtr]--    <--[previousPtr]--
+ * 
+ *                                                         [<-     _length      ->]
+ * 
+ * - * in List, methods with a prefix 'const', like { const_at },{ const_begin }, has indicated that
+ *   these methods will return a copy not the reference of the elements' '_data' property.
+ * 
  * @private {Node} HeadNode - first node | null
  * @private {Node} TailNode - last node | null
  * @private {Number} _length - size of list 
  */
 class list {
+    // static method
+
+    // List.isList  just like Array.isArray
     static isList(objToTest) {
-        return objToTest instanceof list
+        return (
+            objToTest instanceof list &&
+            objToTest.hasOwnProperty('HeadNode') &&
+            objToTest.hasOwnProperty('TailNode') &&
+            objToTest.hasOwnProperty('_length')
+        )
     }
+    // returns a new list by a given array
+    static fromArray(sourceArray) {
+        if (!Array.isArray(sourceArray)) {
+            __warn('unexpected parameter token, expected Array type', sourceArray)
+            return undefined
+        }
+        return new list(sourceArray)
+    }
+    
     constructor(elem) {
         if (isNullPtr(elem)) { // empty constructor
             __log('empty constructor')
@@ -57,7 +99,7 @@ class list {
             this.TailNode = null
             this._length = 0
         } else {
-            if (elem instanceof list) { // copy constructor
+            if (list.isList(elem)) { // copy constructor
                 __log('copy constructor')
                 this.HeadNode = null
                 this.TailNode = null
@@ -65,7 +107,7 @@ class list {
                 elem.itr((index, node) => {
                     this.pushBack(deepCopy(node._data))
                 })
-            } else if (elem instanceof Array) { // copy from array constructor
+            } else if (Array.isArray(elem)) { // copy from array constructor
                 __log('array copy constructor')
                 this.HeadNode = null
                 this.TailNode = null
@@ -85,11 +127,11 @@ class list {
     // get element reference by index
     at(rInd) {
         const __size = this.size()
-        let res = undefined
-        if (typeof (rInd) !== 'number' || !inRangeLR(rInd, 0, __size)) {
-            __warn('error index')
+        if (typeof (rInd) !== 'number' || !inRangeLR(rInd, 0, __size - 1)) {
+            __warn('error index in list.at, input is ', rInd)
             return undefined
         }
+        let res = undefined
         rInd = ~~rInd
         if (rInd < __size / 2) {
             this.itr((index, node) => {
@@ -111,11 +153,11 @@ class list {
     // get element copy by index
     const_at(rInd) {
         const __size = this.size()
-        let res = undefined
-        if (typeof (rInd) !== 'number' || !inRangeLR(rInd, 0, __size)) {
-            __warn('error index')
+        if (typeof (rInd) !== 'number' || !inRangeLR(rInd, 0, __size - 1)) {
+            __warn('error index in list.at, input is ', rInd)
             return undefined
         }
+        let res = undefined
         rInd = ~~rInd
         if (rInd < __size / 2) {
             this.itr((index, node) => {
@@ -134,17 +176,31 @@ class list {
         }
         return res
     }
-    // fill list with giving element
-    fill(elem, start = 0, end = this.size()) {
+
+    // fill list with giving element from start index to end index
+    // alternative option { couldExeed } can 
+    fill(elem, start = 0, end = this.size() - 1, couldExeed = false) {
+        if (this.empty()) {
+            __warn('cannot fill an empty list')
+            return
+        }
         this.itr((index, node) => {
             if (inRangeLR(index, start, end))
                 node._data = elem
         })
+        // pushing to tail
+        if (end > this.size() - 1 && couldExeed) {
+            __log('fill:couldExeed, adding count: ', end - (this.size() - 1))
+            for (let _idx = 0; _idx < end - (this.size() - 1); _idx++) {
+                this.pushBack(elem)
+            }
+        }
+        couldExeed ? __log('after fill _length is ', this._length) : void(0)
     }
 
     pushFront(elem) {
         if (isNullPtr(elem)) {
-            __log('push front failed with null ptr')
+            __warn('cannot push element which is null or undefined')
             return
         }
         const node = new Node(elem, null, this.HeadNode)
@@ -152,12 +208,12 @@ class list {
             this.HeadNode.previousPtr = node
         }
         this.HeadNode = node
-        // if this is empty
+        // if this is an empty list
         if (this.TailNode === null) {
             this.TailNode = node
         }
         this._length++
-        __log('push front: new node:')
+        __log('push front: new node: ')
         __log(node)
     }
 
@@ -180,6 +236,7 @@ class list {
         __log(node)
     }
 
+    // insert elem after index { position }, range is [0, length - 1]
     insert(elem, position) {
         if (typeof (position) !== 'number' || !inRangeLR(position, 0, this.size()) || isNullPtr(elem)) {
             __warn('push front failed with null ptr or null/error position or position range error')
@@ -194,10 +251,9 @@ class list {
             if (position < this.size() / 2) {
                 this.itr((index, p) => {
                     if (index === position) {
-                        const pForward = p.previousPtr
                         const pNext = p.nextPtr
-                        const node = new Node(elem, pForward, pNext)
-                        pForward.nextPtr = node
+                        const node = new Node(elem, p, pNext)
+                        p.nextPtr = node
                         pNext.previousPtr = node
                         this._length++
                         return -1
@@ -206,10 +262,9 @@ class list {
             } else {
                 this.reverse_itr((index, p) => {
                     if (index === position) {
-                        const pForward = p.previousPtr
                         const pNext = p.nextPtr
-                        const node = new Node(elem, pForward, pNext)
-                        pForward.nextPtr = node
+                        const node = new Node(elem, p, pNext)
+                        p.nextPtr = node
                         pNext.previousPtr = node
                         this._length++
                         return -1
@@ -255,6 +310,10 @@ class list {
      * @param {handler} callback - callback function to handle the index and node while iterating, return -1 to break the iterator loop
      */
     itr(callback) {
+        if (Object.prototype.toString.call(callback) !== '[object Function]') {
+            __warn('[itr] need a parameter with type "function"')
+            return
+        }
         let p = null
         let index = -1
         do {
@@ -270,6 +329,10 @@ class list {
      * @param {Function} callback - callback function to handle the index and node while iterating, return -1 to break the iterator loop
      */
     reverse_itr(callback) {
+        if (Object.prototype.toString.call(callback) !== '[object Function]') {
+            __warn('[reverse_itr] need a parameter with type "function"')
+            return
+        }
         let p = null
         let index = this.size()
         do {
@@ -340,22 +403,82 @@ class list {
         return data
     }
     // do callback(elem) for every node->_data
-    // for example x.foreach( (x)=>x=x*x )
-    foreach(callback, start = 0, end = this.size() - 1) {
+    // for example x.forEach( x => x = x**2 )
+    forEach(callback, start = 0, end = this.size() - 1) {
+        if (Object.prototype.toString.call(callback) !== '[object Function]') {
+            __warn('[forEach] need a parameter with type "function"')
+            return
+        }
         if (!this.empty()) {
             this.itr((index, node) => {
                 if (inRangeLR(index, start, end))
-                    callback(node._data)
+                    callback(node._data, index, this)
             })
         }
     }
-    // The map() method creates a new list
+    // The every method tests every element of this list
+    // only returns true while all elements pass through the callback function
+    every(callback) {
+        if (Object.prototype.toString.call(callback) !== '[object Function]') {
+            __warn('[every] need a parameter with type "function"')
+            return
+        }
+        if (this.empty()) {
+            __log('[every] returned true but only because empty list')
+            return true
+        }
+        let ans = true
+        this.itr((index, node) => {
+            ans = ans && callback(node._data, index ,this)
+        })
+        return ans
+    }
+    // The some method tests every element of this list
+    // returns true while at least one element pass through the callback function
+    some(callback) {
+        if (Object.prototype.toString.call(callback) !== '[object Function]') {
+            __warn('[some] need a parameter with type "function"')
+            return
+        }
+        if (this.empty()) {
+            __log('[some] returned true but only because empty list')
+            return true
+        }
+        let ans = false
+        this.itr((index, node) => {
+            ans = ans || callback(node._data, index, this)
+            // if get ans as true, immediately jump out of the itr loop
+            return ans ? -1 : 0
+        })
+        return ans
+    }
+    // The map method creates a new list
     // with the results of calling callback function on every element in the calling list.
     map(callback) {
+        if (Object.prototype.toString.call(callback) !== '[object Function]') {
+            __warn('[map] need a parameter with type "function"')
+            return
+        }
         const lp = new list()
         if (!this.empty()) {
             this.itr((index, node) => {
-                lp.pushBack(callback(node._data))
+                lp.pushBack(callback(node._data, index, this))
+            })
+        }
+        return lp
+    }
+    // The filter method creates a new list with elements pass the callback fucntion
+    filter(callback) {
+        if (Object.prototype.toString.call(callback) !== '[object Function]') {
+            __warn('[filter] need a parameter with type "function"')
+            return
+        }
+        const lp = new list()
+        if (!this.empty()) {
+            this.itr((index, node) => {
+                if (callback(node._data, index, this)) {
+                    lp.pushBack(node._data)
+                }
             })
         }
         return lp
@@ -373,7 +496,8 @@ class list {
                 counter++
                 node = node.nextPtr
             }
-            __log('debug size: (counter:_length)->' + counter + ':' + this._length)
+            __log('debug size: (calculated:_length)->' + counter + ':' + this._length)
+            counter !== this._length ? __error('size() debug error ocurred: counter !== this._length !') : void(0)
         } else {
             counter = this._length
         }
@@ -441,13 +565,75 @@ class list {
     /**
      * remove a segment of nodes and replace with given elements
      * @param {Number} index - index at which to start changing the list (with origin 0)
-     * @param {Number} [deleteCount] - An integer indicating the number of old list elements to remove
+     * @param {Number} [deleteCount] - An integer indicating the number of old list elements to remove (with origin 1)
      * @param {any[]} [elems] - the elements to add to the list, beginning at the start index, 
      * if you don't specify any elements, splice() will only remove elements from the array
      * @returns {any[]} a list containing the deleted elements, if no elements are removed, an empty list is returned
      */
-    splice(index = 0, deleteCount = this.size(), ...elems) {
-        // to do
+    splice(index = 0, deleteCount = 1, ...elems) {
+        if (this.empty()) {
+            return []
+        }
+        // check index
+        if (typeof (index) !== 'number' || !inRangeLR(index, 0, this.size() - 1)) {
+            __warn('unexpected parameter 0, need for number which in range 0 to ' + (this.size() - 1))
+            return []
+        }
+        // check deleteCount
+        const maxDelAmount = this.size() - index
+        if (typeof (deleteCount) !== 'number' || !inRangeLR(deleteCount, 1, maxDelAmount)) {
+            __warn('unexpected parameter 1, need for number which in range 1 to ' + maxDelAmount)
+            return []
+        }
+        let Delnodes = {
+            head: null,
+            tail: null,
+            isApproachEnd: false
+        }
+        // remove elements
+        this.itr((itr_idx, p) => {
+            if (itr_idx === index) {
+                Delnodes.head = p
+            }
+            if (itr_idx === index + deleteCount - 1) {
+                Delnodes.tail = p
+                Delnodes.isApproachEnd = itr_idx === this.size() - 1
+                return -1
+            }
+        })
+        if (index === 0 && Delnodes.isApproachEnd) {
+            // -> remove all
+            this.clear()
+            // pushing new elements
+            for (const dt of elems) {
+                this.pushBack(dt)
+            }
+        } else if (index === 0 && !Delnodes.isApproachEnd) {
+            Delnodes.tail.nextPtr.previousPtr = null
+            this.HeadNode = Delnodes.tail.nextPtr
+            this._length = this._length - deleteCount
+            // inserting new elements
+            elems.reverse()
+            for (const dt of elems) {
+                this.pushFront(dt)
+            }
+        } else if (index !== 0 && Delnodes.isApproachEnd) {
+            Delnodes.head.previousPtr.nextPtr = null
+            this.TailNode = Delnodes.head.previousPtr
+            this._length = this._length - deleteCount
+            // inserting new elements
+            for (const dt of elems) {
+                this.pushBack(dt)
+            }
+        } else {
+            Delnodes.head.previousPtr.nextPtr = Delnodes.tail.nextPtr
+            Delnodes.tail.nextPtr.previousPtr = Delnodes.head.previousPtr
+            this._length = this._length - deleteCount
+            // inserting new elements
+            for (const dt of elems) {
+                
+            }
+        }
     }
     // remove all nodes
     clear() {
@@ -490,6 +676,10 @@ class list {
     }
     // quick sorting, may be unstable
     sort(cmpFunc = defaultLess) {
+        if (Object.prototype.toString.call(cmpFunc) !== '[object Function]') {
+            __warn('[sort] need a parameter with type "function"')
+            return
+        }
         // define partion and qsort function
         const partion = (pHead, pLow, pHigh) => {
             const pivot = pLow._data
@@ -525,7 +715,7 @@ class list {
     }
     // equFunc: callback function, @param node->_data, return true while finded the target node
     find(equFunc) {
-        if (!(equFunc instanceof Function)) {
+        if (Object.prototype.toString.call(equFunc) !== '[object Function]') {
             return undefined
         }
         let res = undefined
@@ -543,7 +733,7 @@ class list {
             __warn('wrong param error: "position", should be an integer between 0 and length-1')
             return undefined
         }
-        if (!(equFunc instanceof Function)) {
+        if (Object.prototype.toString.call(equFunc) !== '[object Function]') {
             return undefined
         }
         pos = ~~pos
@@ -558,7 +748,7 @@ class list {
     }
 
     findIndex(equFunc) {
-        if (!(equFunc instanceof Function)) {
+        if (Object.prototype.toString.call(equFunc) !== '[object Function]') {
             return -1
         }
         let res = -1
@@ -576,7 +766,7 @@ class list {
             __warn('wrong param error: "position", should be an integer between 0 and length-1')
             return -1
         }
-        if (!(equFunc instanceof Function)) {
+        if (Object.prototype.toString.call(equFunc) !== '[object Function]') {
             return -1
         }
         pos = ~~pos
@@ -591,7 +781,7 @@ class list {
     }
 
     back_concat(anotherListRef) {
-        if (anotherListRef instanceof list) {
+        if (list.isList(anotherListRef)) {
             if (anotherListRef._length === 0 || anotherListRef.HeadNode === null || anotherListRef.TailNode === null) {
                 __warn('bad concat target')
                 return
@@ -604,7 +794,7 @@ class list {
     }
 
     front_concat(anotherListRef) {
-        if (anotherListRef instanceof list) {
+        if (list.isList(anotherListRef)) {
             if (anotherListRef._length === 0 || anotherListRef.HeadNode === null || anotherListRef.TailNode === null) {
                 __warn('bad concat target')
                 return
@@ -616,8 +806,8 @@ class list {
         }
     }
 
-    concat(anotherListRef, position) {
-        if (anotherListRef instanceof list) {
+    concat(anotherListRef, position = this.size() - 1) {
+        if (list.isList(anotherListRef)) {
             if (anotherListRef === this) {
                 __warn('self concating is not allowed, use "front_concat" or "back_concat" to instead')
                 return
@@ -671,7 +861,7 @@ class list {
     }
 
     swap(anotherListRef) {
-        if (anotherListRef instanceof list) {
+        if (list.isList(anotherListRef)) {
             const pHead = this.HeadNode
             const pTail = this.TailNode
             const pLength = this._length
@@ -682,6 +872,15 @@ class list {
             anotherListRef.TailNode = pTail
             anotherListRef._length = pLength
         }
+    }
+
+    consolePrint(needIndex) {
+        if (this.empty()) {
+            return
+        }
+        this.itr((idx, node) => {
+            needIndex ? console.log('index: ' + idx, node._data) : console.log(node._data)
+        })
     }
 }
 

@@ -252,37 +252,80 @@ describe('class list test: ', () => {
             expect(emptyInst.at(~~(1000 * Math.random())) === emptyInst.at(~~(1000 * Math.random()))).to.be.true
         })
     })
-    it('list::pushFront(string)', () => {
-
+    it('list::splice()', () => {
+        emptyInst.clear()
+        repeat(1000, () => {
+            emptyInst.pushFront($randStr())
+        })
+        expect(emptyInst.size()).to.equal(1000)
+        // default splice
+        emptyInst.splice()
+        expect(emptyInst.size()).to.equal(999)
+        let cot = 0
+        emptyInst.itr((idx, p) => {
+            cot++
+        })
+        expect(cot).to.equal(999)
+        const targ = $seirNA(1200)
+        // replace all
+        emptyInst.splice(0, 999, ...targ)
+        for (let ix = 0; ix < emptyInst.size() - 1; ix++) {
+            expect(emptyInst.at(ix)).to.equal(ix)
+        }
+        emptyInst.clear()
+        expect(emptyInst.size()).to.equal(0)
+        repeat(1000, () => {
+            emptyInst.pushFront($randStr())
+        })
+        // bad index
+        emptyInst.splice(-20)
+        expect(emptyInst.size()).to.equal(1000)
+        // bad delcount
+        emptyInst.splice(0, 1001)
+        expect(emptyInst.size()).to.equal(1000)
+        // splice from head
+        emptyInst.splice(0, 2, 'abc', 'def')
+        expect(emptyInst.at(0)).to.equal('abc')
+        expect(emptyInst.at(1)).to.equal('def')
+        // splice to end
+        emptyInst.splice(998, 2, 'abcd', 'defg')
+        expect(emptyInst.at(998)).to.equal('abcd')
+        expect(emptyInst.at(999)).to.equal('defg')
+        // clear
+        emptyInst.splice(0, 1000)
+        expect(emptyInst.size()).to.equal(0)
     })
-    it('list::pushFront(bool)', () => {
+    // it('list::pushFront(string)', () => {
 
-    })
-    it('list::pushFront(any)', () => {
+    // })
+    // it('list::pushFront(bool)', () => {
 
-    })
-    it('list::pushFront(undefined | null | NaN)', () => {
+    // })
+    // it('list::pushFront(any)', () => {
 
-    })
-    it('list::pushBack(number)', () => {
+    // })
+    // it('list::pushFront(undefined | null | NaN)', () => {
 
-    })
-    it('list::pushBack(object)', () => {
+    // })
+    // it('list::pushBack(number)', () => {
 
-    })
-    it('list::pushBack(object&)', () => {
+    // })
+    // it('list::pushBack(object)', () => {
 
-    })
-    it('list::pushBack(string)', () => {
+    // })
+    // it('list::pushBack(object&)', () => {
 
-    })
-    it('list::pushBack(bool)', () => {
+    // })
+    // it('list::pushBack(string)', () => {
 
-    })
-    it('list::pushBack(any)', () => {
+    // })
+    // it('list::pushBack(bool)', () => {
 
-    })
-    it('list::pushBack(undefined | null | NaN)', () => {
+    // })
+    // it('list::pushBack(any)', () => {
 
-    })
+    // })
+    // it('list::pushBack(undefined | null | NaN)', () => {
+
+    // })
 })
