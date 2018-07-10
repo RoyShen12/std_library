@@ -47,6 +47,9 @@ class Node {
  * @private {Number} _length - size of list 
  */
 class list {
+    static isList(objToTest) {
+        return objToTest instanceof list
+    }
     constructor(elem) {
         if (isNullPtr(elem)) { // empty constructor
             __log('empty constructor')
