@@ -252,7 +252,7 @@ describe('class list test: ', () => {
             expect(emptyInst.at(~~(1000 * Math.random())) === emptyInst.at(~~(1000 * Math.random()))).to.be.true
         })
     })
-    it('list::splice()', () => {
+    it('list::splice() all func', () => {
         emptyInst.clear()
         repeat(1000, () => {
             emptyInst.pushFront($randStr())
@@ -291,6 +291,11 @@ describe('class list test: ', () => {
         emptyInst.splice(998, 2, 'abcd', 'defg')
         expect(emptyInst.at(998)).to.equal('abcd')
         expect(emptyInst.at(999)).to.equal('defg')
+        // splice to mid
+        emptyInst.splice(400, 3, '1234', '5678', '9101')
+        expect(emptyInst.at(400)).to.equal('1234')
+        expect(emptyInst.at(401)).to.equal('5678')
+        expect(emptyInst.at(402)).to.equal('9101')
         // clear
         emptyInst.splice(0, 1000)
         expect(emptyInst.size()).to.equal(0)

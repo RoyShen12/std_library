@@ -630,8 +630,9 @@ class list {
             Delnodes.tail.nextPtr.previousPtr = Delnodes.head.previousPtr
             this._length = this._length - deleteCount
             // inserting new elements
+            elems.reverse()
             for (const dt of elems) {
-                
+                this.insert(dt, index - 1)
             }
         }
     }
