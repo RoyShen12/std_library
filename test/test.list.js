@@ -1,10 +1,15 @@
 // mocha unit test
 const expect = chai.expect
 const insertSeperator = ' ------------------------------ '
-// test
+// test util
 const repeat = (n, func, ...args) => {
     for (let i = 1; i <= n; i++) {
         func(...args)
+    }
+}
+const indexedRepeat = (n, func) => {
+    for (let i = 0; i < n; i++) {
+        func(i)
     }
 }
 const anyArr = [-1, 0, 1, 141.215, 0.000151, {}, {
@@ -35,6 +40,10 @@ const instA = new list()
 const instB = new list()
 const instC = new list($seirNA(20))
 const emptyInst = new list()
+window._emptyInst_ = emptyInst
+const emptyInst2 = new list()
+const emptyInst3 = new list()
+const emptyInst4 = new list()
 const boolInst = new list()
 const strInst = new list()
 
@@ -199,21 +208,6 @@ describe('class list test: ', () => {
         expect(cpi.at(3)).to.deep.equal(anyArr)
         expect(cpi.at(4)).to.deep.equal(anyArr)
     })
-    it('list::fill(undefined | null | NaN)' + insertSeperator + 'works correctly', () => {
-        const cpi = new list(instA)
-        cpi.fill()
-        let i = cpi.size() - 1
-        while (i-- > 0)
-            expect(cpi.at(i)).to.equal(undefined)
-        cpi.fill(null)
-        i = cpi.size() - 1
-        while (i-- > 0)
-            expect(cpi.at(i)).to.equal(null)
-        cpi.fill(NaN)
-        i = cpi.size() - 1
-        while (i-- > 0)
-            expect(cpi.at(i)).to.deep.equal(NaN)
-    })
     it('list::pushFront(number)' + insertSeperator + 'works correctly', () => {
         emptyInst.clear()
         const testNA = []
@@ -244,22 +238,28 @@ describe('class list test: ', () => {
             a: 111,
             b: 222
         }
-        repeat(1000, () => {
+        repeat(1001, () => {
             emptyInst.pushFront(objr)
-            expect(emptyInst.at(0)).to.deep.equal(objr)
         })
+        expect(emptyInst.at(0)).to.deep.equal(objr)
         repeat(100, () => {
-            expect(emptyInst.at(~~(1000 * Math.random())) === emptyInst.at(~~(1000 * Math.random()))).to.be.true
+            const n1 = ~~(1000 * Math.random())
+            const n2 = ~~(1000 * Math.random())
+            emptyInst.at(n1) === emptyInst.at(n2) ? void (0) : console.log(n1, n2, emptyInst.at(n1), emptyInst.at(n2))
+            expect(emptyInst.at(n1) === emptyInst.at(n2)).to.be.true
         })
     })
-    it('list::splice() all func', () => {
+    it('list::splice all func' + insertSeperator + 'works correctly', () => {
         emptyInst.clear()
         repeat(1000, () => {
             emptyInst.pushFront($randStr())
         })
         expect(emptyInst.size()).to.equal(1000)
         // default splice
-        emptyInst.splice()
+        const a1 = emptyInst.splice()
+        expect(a1).to.be.an('array')
+        expect(a1.length).to.equal(1)
+        expect(a1[0]).to.be.a('string')
         expect(emptyInst.size()).to.equal(999)
         let cot = 0
         emptyInst.itr((idx, p) => {
@@ -299,38 +299,58 @@ describe('class list test: ', () => {
         // clear
         emptyInst.splice(0, 1000)
         expect(emptyInst.size()).to.equal(0)
+        emptyInst.pushBack('12').pushBack('34').pushBack('56').pushBack('78').pushBack('910').pushBack('1011').pushBack('1213')
+        // splice returning from start by 1
+        const a2 = emptyInst.splice()
+        expect(a2).to.deep.equal(['12'])
+        // splice returning from end by 1
+        const a3 = emptyInst.splice(5)
+        expect(a3).to.deep.equal(['1213'])
+        // splice returning from mid by 1
+        const a4 = emptyInst.splice(2)
+        expect(a4).to.deep.equal(['78'])
+        emptyInst.pushBack('1415').pushBack('1617').pushBack('1819').pushBack('2021')
+        // splice returning from mid by 2
+        const a5 = emptyInst.splice(4, 2)
+        expect(a5).to.deep.equal(['1415', '1617'])
+        // clear
+        const ar = emptyInst.toArray()
+        const a6 = emptyInst.splice(0, emptyInst.size())
+        expect(ar).to.deep.equal(a6)
+        indexedRepeat(10000, i => emptyInst.pushBack(i))
+        indexedRepeat(100, i => {
+            const ix = i * 2 + Math.random() * 30
+            const lx = Math.random() * 30
+            const ans = emptyInst.toArray().splice(ix, lx)
+            const tmp = emptyInst.splice(ix, lx)
+            expect(tmp).to.deep.equal(ans)
+        })
     })
-    // it('list::pushFront(string)', () => {
-
-    // })
-    // it('list::pushFront(bool)', () => {
-
-    // })
-    // it('list::pushFront(any)', () => {
-
-    // })
-    // it('list::pushFront(undefined | null | NaN)', () => {
-
-    // })
-    // it('list::pushBack(number)', () => {
-
-    // })
-    // it('list::pushBack(object)', () => {
-
-    // })
-    // it('list::pushBack(object&)', () => {
-
-    // })
-    // it('list::pushBack(string)', () => {
-
-    // })
-    // it('list::pushBack(bool)', () => {
-
-    // })
-    // it('list::pushBack(any)', () => {
-
-    // })
-    // it('list::pushBack(undefined | null | NaN)', () => {
-
-    // })
+    it('list::concat/list::front_concat/list::back_concat' + insertSeperator + 'works correctly', () => {
+        const list1 = list.fromArray([1, 2, 3, 4, 5, 6, 7, 8, 9])
+        const list2 = list.fromArray([-1, -2, -3, -4, -5, -6, -7, -8, -9])
+        const list3 = list.fromArray(['a', 'b', 'c', 'd', 'e'])
+        const list4 = list.fromArray([{ a: 1, b: 2 }, { c: 3, d: 4 }])
+        list1.front_concat(list2)
+        expect(list1).to.be.deep.equal(list.fromArray([-1, -2, -3, -4, -5, -6, -7, -8, -9, 1, 2, 3, 4, 5, 6, 7, 8, 9]))
+        expect(list2.TailNode.nextPtr).to.equal(null)
+        list3.back_concat(list4)
+        expect(list3).to.be.deep.equal(list.fromArray(['a', 'b', 'c', 'd', 'e', { a: 1, b: 2 }, { c: 3, d: 4 }]))
+        expect(list4.HeadNode.previousPtr).to.equal(null)
+        console.log(list1)
+        console.log(list2)
+        console.log(list3)
+        console.log(list4)
+        const list5 = list.fromArray([1, 2, 3, 4])
+        const list6 = list.fromArray([6, 7, 8, 9])
+        list5.concat(list6, 0)
+        expect(list5).to.deep.equal(list.fromArray([6, 7, 8, 9, 1, 2, 3, 4]))
+        list5.concat(list6, 9)
+        expect(list5).to.deep.equal(list.fromArray([6, 7, 8, 9, 1, 2, 3, 4]))
+        list5.concat(list6, 7)
+        expect(list5).to.deep.equal(list.fromArray([6, 7, 8, 9, 1, 2, 3, 4, 6, 7, 8, 9]))
+        // mid concat
+        list5.concat(list6, 4)
+        expect(list5).to.deep.equal(list.fromArray([6, 7, 8, 9, 1, 6, 7, 8, 9, 2, 3, 4, 6, 7, 8, 9]))
+    })
 })
