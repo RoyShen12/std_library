@@ -15,16 +15,12 @@
 /* eslint-disable */
 
 // the debug flag
-const __debug = false
-// reference swap function
-const swap = (a, b) => {
-    const t = a
-    a = b
-    b = t
-}
-const __log = (...info) => __debug && console ? console.log(...info) : void (0)
-const __warn = (...warn) => console ? console.warn(...warn) : void (0)
-const __error = (...err) => console ? console.error(...err) : void(0)
+// 0 - no debug    1 - normal info    2 - more info    3 - any info
+const __debug = 1
+const __verbose = (...vb) => __debug > 2 && console ? console.log(...vb) : void (0)
+const __log = (...info) => __debug > 1 && console ? console.log(...info) : void (0)
+const __warn = (...warn) => __debug > 0 && console ? console.warn(...warn) : void (0)
+const __error = (...err) => console ? console.error(...err) : void (0)
 const _isnan = (...num) => num.some(Number.isNaN(num))
 const inRange = (target, rangeS, rangeE) => target > rangeS && target < rangeE
 const inRangeL = (target, rangeS, rangeE) => target >= rangeS && target < rangeE
@@ -123,7 +119,7 @@ class list {
     static clone(listR) {
         return new list(listR)
     }
-    
+
     constructor(elem) {
         if (isNullPtr(elem)) { // empty constructor
             __log('empty constructor')
@@ -219,7 +215,7 @@ class list {
             return this
         }
         // check start end
-        if (typeof start !== 'number' || start < 0 || (!this.empty() && start > this.size() - 1 ) || (this.empty() && start !== 0)) {
+        if (typeof start !== 'number' || start < 0 || (!this.empty() && start > this.size() - 1) || (this.empty() && start !== 0)) {
             __warn('[list.fill] cannot fill with bad parameter 1 : not a number or range error')
             return this
         }
@@ -250,7 +246,7 @@ class list {
                 this.pushBack(elem)
             }
         }
-        couldExeed ? __log('after fill _length is ', this._length) : void(0)
+        couldExeed ? __log('after fill _length is ', this._length) : void (0)
         return this
     }
 
@@ -382,6 +378,28 @@ class list {
     get const_end() {
         return deepCopy(this.TailNode._data)
     }
+    // creates a slice of list with n elements dropped from the beginning
+    drop(n = 1) {
+        if (n < 1) {
+            return new list()
+        }
+        n > this.size() - 1 ? n = this.size() - 1 : void (0)
+        n = ~~n
+        const lp = list.clone(this)
+        lp.splice(0, n)
+        return lp
+    }
+    // creates a slice of list with n elements dropped from the end
+    dropRight(n = 1) {
+        if (n < 1) {
+            return new list()
+        }
+        n > this.size() - 1 ? n = this.size() - 1 : void (0)
+        n = ~~n
+        const lp = list.clone(this)
+        lp.reverse().splice(0, n)
+        return lp.reverse()
+    }
     /**
      * forward iterator
      * @param {handler} callback - callback function to handle the index and node while iterating, return -1 to break the iterator loop
@@ -455,6 +473,10 @@ class list {
             }
         }
     }
+
+    get length() {
+        return this.size()
+    }
     // array of data reference
     get data() {
         let data = []
@@ -487,6 +509,7 @@ class list {
         })
         return data
     }
+
     // do callback(elem) for every node->_data
     // for example x.forEach( x => x = x**2 )
     forEach(callback, start = 0, end = this.size() - 1) {
@@ -514,7 +537,7 @@ class list {
         }
         let ans = true
         this.itr((index, node) => {
-            ans = ans && callback(node._data, index ,this)
+            ans = ans && callback(node._data, index, this)
         })
         return ans
     }
@@ -585,10 +608,27 @@ class list {
         }
         return false
     }
-    // return the size of calling list
+    // The compact methods creates a list with all falsey values removed
+    // The values false, null, 0, "", undefined, and NaN are falsey
+    compact() {
+        return list.clone(this).filter(data => !(data === false || isNullPtr(data) || data === '' || Number.isNaN(data) || data === 0))
+    }
+    // Creates a duplicate-free version of a list
+    // in which only the first occurrence of each element is kept
+    // The order of result values is determined by the order they occur in the list
+    uniq() {
+        const dataSet = new Set()
+        this.itr((idx, node) => {
+            dataSet.add(node._data)
+        })
+        this.clear()
+        dataSet.forEach(v => this.pushBack(v))
+        return this
+    }
+    // return(calculate) the size of calling list
     size() {
         let counter
-        if (__debug) {
+        if (__debug == 3) {
             let node = this.HeadNode
             if (node === null) {
                 return 0
@@ -598,16 +638,12 @@ class list {
                 counter++
                 node = node.nextPtr
             }
-            __log('debug size: (calculated:_length)->' + counter + ':' + this._length)
-            counter !== this._length ? __error('size() debug error ocurred: counter !== this._length !') : void(0)
+            __verbose('debug size: (calculated:_length)->' + counter + ':' + this._length)
+            counter !== this._length ? __error('size() debug error ocurred: counter !== this._length !') : void (0)
         } else {
             counter = this._length
         }
         return counter
-    }
-
-    get length() {
-        return this.size()
     }
 
     empty() {
@@ -697,17 +733,33 @@ class list {
         index = ~~index
         deleteCount = ~~deleteCount
         // remove elements
-        this.itr((itr_idx, p) => {
-            if (itr_idx === index) {
-                Delnodes.head = p
-            }
-            if (itr_idx === index + deleteCount - 1) {
-                Delnodes.tail = p
-                Delnodes.isApproachEnd = itr_idx === this.size() - 1
-                return -1
-            }
-        })
-        // __log(index, deleteCount, Delnodes)
+        
+        if (index < this.size() / 2) {
+            this.itr((itr_idx, p) => {
+                if (itr_idx === index) {
+                    Delnodes.head = p
+                }
+                if (itr_idx === index + deleteCount - 1) {
+                    Delnodes.tail = p
+                    Delnodes.isApproachEnd = itr_idx === this.size() - 1
+                    return -1
+                }
+            })
+        } else {
+            this.reverse_itr((itr_idx, p) => {
+                if (itr_idx === index + deleteCount - 1) {
+                    Delnodes.tail = p
+                    Delnodes.isApproachEnd = itr_idx === this.size() - 1
+                }
+                if (itr_idx === index) {
+                    Delnodes.head = p
+                    return -1
+                }
+            })
+        }
+
+        
+        __verbose(index, deleteCount, Delnodes)
         if (index === 0 && Delnodes.isApproachEnd) {
             const arr = this.toArray()
             // -> remove all
@@ -1050,5 +1102,5 @@ class list {
     }
 }
 
-// uncomment next line when in webpack environment
+// -- uncomment next line when in webpack environment
 // export default list

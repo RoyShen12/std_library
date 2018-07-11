@@ -325,6 +325,15 @@ describe('class list test: ', () => {
             const tmp = emptyInst.splice(ix, lx)
             expect(tmp).to.deep.equal(ans)
         })
+        emptyInst.clear()
+        indexedRepeat(10000, i => emptyInst.pushBack(i))
+        indexedRepeat(100, i => {
+            const ix = 8000 - Math.random() * 1000
+            const lx = Math.random() * 20
+            const ans = emptyInst.toArray().splice(ix, lx)
+            const tmp = emptyInst.splice(ix, lx)
+            expect(tmp).to.deep.equal(ans)
+        })
     })
     it('list::concat/list::front_concat/list::back_concat' + insertSeperator + 'works correctly', () => {
         const list1 = list.fromArray([1, 2, 3, 4, 5, 6, 7, 8, 9])
@@ -337,10 +346,6 @@ describe('class list test: ', () => {
         list3.back_concat(list4)
         expect(list3).to.be.deep.equal(list.fromArray(['a', 'b', 'c', 'd', 'e', { a: 1, b: 2 }, { c: 3, d: 4 }]))
         expect(list4.HeadNode.previousPtr).to.equal(null)
-        console.log(list1)
-        console.log(list2)
-        console.log(list3)
-        console.log(list4)
         const list5 = list.fromArray([1, 2, 3, 4])
         const list6 = list.fromArray([6, 7, 8, 9])
         list5.concat(list6, 0)
@@ -352,5 +357,14 @@ describe('class list test: ', () => {
         // mid concat
         list5.concat(list6, 4)
         expect(list5).to.deep.equal(list.fromArray([6, 7, 8, 9, 1, 6, 7, 8, 9, 2, 3, 4, 6, 7, 8, 9]))
+    })
+    it('list::drop/list::dropRight' + insertSeperator + 'works correctly', () => {
+        emptyInst.clear()
+        // 1 2 3 4
+        emptyInst.pushBack(1).pushBack(2).pushBack(3).pushBack(4)
+        expect(emptyInst.drop()).to.deep.equal(list.fromArray([2, 3, 4]))
+        expect(emptyInst.dropRight()).to.deep.equal(list.fromArray([1, 2, 3]))
+        expect(emptyInst.drop(2)).to.deep.equal(list.fromArray([3, 4]))
+        expect(emptyInst.dropRight(2)).to.deep.equal(list.fromArray([1, 2]))
     })
 })
