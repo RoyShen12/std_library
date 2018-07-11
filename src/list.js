@@ -16,7 +16,7 @@
 
 // the debug flag
 // 0 - no debug    1 - normal info    2 - more info    3 - any info
-const __debug = 1
+const __debug = 0
 const __verbose = (...vb) => __debug > 2 && console ? console.log(...vb) : void (0)
 const __log = (...info) => __debug > 1 && console ? console.log(...info) : void (0)
 const __warn = (...warn) => __debug > 0 && console ? console.warn(...warn) : void (0)
@@ -306,14 +306,17 @@ class list {
 
     // insert elem after index { position }, range is [0, length - 1]
     insert(elem, position) {
-        if (typeof (position) !== 'number' || !inRangeLR(position, 0, this.size()) || isNullPtr(elem)) {
+        if (typeof (position) !== 'number' || !inRangeLR(position, 0, this.size() - 1) || isNullPtr(elem)) {
             __warn('[list.insert] failed with parameter 0 NullPtr or parameter 1 missing/range error')
             return
         }
         position = ~~position
         if (position === 0) {
-            this.pushFront(elem)
-        } else if (position === this.size()) {
+            const node = new Node(elem, this.HeadNode, this.HeadNode.nextPtr)
+            this.HeadNode.nextPtr.previousPtr = node
+            this.HeadNode.nextPtr = node
+            this._length++
+        } else if (position === this.size() - 1) {
             this.pushBack(elem)
         } else {
             if (position < this.size() / 2) {
@@ -450,7 +453,7 @@ class list {
     // make list able to called by for...of
     // the returns value is const node->_data
     [Symbol.iterator]() {
-        if (this.size() === 0) {
+        if (this.empty()) {
             return {
                 next() {
                     return {
@@ -459,15 +462,14 @@ class list {
                 }
             }
         } else {
-            let thisIns = this
+            const thisH = this.HeadNode
             let p = null
             return {
                 next() {
-                    p !== null ? p = p.nextPtr : p = thisIns.HeadNode
-                    let f = p !== null
+                    p ? p = p.nextPtr : p = thisH
                     return {
-                        value: f ? p._data : null,
-                        done: !f
+                        value: p !== null ? p._data : null,
+                        done: p === null
                     }
                 }
             }
@@ -758,8 +760,8 @@ class list {
             })
         }
 
-        
         __verbose(index, deleteCount, Delnodes)
+
         if (index === 0 && Delnodes.isApproachEnd) {
             const arr = this.toArray()
             // -> remove all

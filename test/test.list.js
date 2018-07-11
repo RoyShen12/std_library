@@ -2,6 +2,7 @@
 const expect = chai.expect
 const insertSeperator = ' ------------------------------ '
 // test util
+const RDM = (lower, upper) => ~~(lower + Math.floor(Math.random() * (upper - lower + 1)))
 const repeat = (n, func, ...args) => {
     for (let i = 1; i <= n; i++) {
         func(...args)
@@ -35,6 +36,13 @@ const $seirOBJ = (n) => {
     }
 }
 const $randStr = () => 10000 * Math.random() + '' + 10000 * Math.random()
+const $strFX = bits => {
+    let ret = ''
+    for (let index = 0; index < bits; index++) {
+        ret += ((Math.random() * 16 | 0) & 0x3 | 0x8).toString(16)
+    }
+    return ret
+}
 const $randBol = () => Math.random() < 0.500000 ? true : false
 const instA = new list()
 const instB = new list()
@@ -366,5 +374,136 @@ describe('class list test: ', () => {
         expect(emptyInst.dropRight()).to.deep.equal(list.fromArray([1, 2, 3]))
         expect(emptyInst.drop(2)).to.deep.equal(list.fromArray([3, 4]))
         expect(emptyInst.dropRight(2)).to.deep.equal(list.fromArray([1, 2]))
+    })
+    it('benchmark push number', () => {
+        const a = new Array()
+        const b = new list()
+        const c = new list()
+        console.time('array push 10^6 number')
+        repeat(100000, () => a.push(0))
+        console.timeEnd('array push 10^6 number')
+        //
+        console.time('list push 10^6 number')
+        repeat(100000, () => b.pushBack(0))
+        console.timeEnd('list push 10^6 number')
+        //
+        console.time('list push front 10^6 number')
+        repeat(100000, () => c.pushFront(0))
+        console.timeEnd('list push front 10^6 number')
+        //
+        console.time('array clear')
+        a.splice(0, a.length - 1)
+        console.timeEnd('array clear')
+        //
+        console.time('list clear')
+        b.clear()
+        console.timeEnd('list clear')
+    })
+    it('benchmark push string easy', () => {
+        const a = new Array()
+        const b = new list()
+        const c = new list()
+        console.time('array push 10^6 x 8 bytes string')
+        repeat(100000, () => a.push($strFX(8)))
+        console.timeEnd('array push 10^6 x 8 bytes string')
+        //
+        console.time('list push 10^6 x 8 bytes string')
+        repeat(100000, () => b.pushBack($strFX(8)))
+        console.timeEnd('list push 10^6 x 8 bytes string')
+        //
+        console.time('list push front 10^6 x 8 bytes string')
+        repeat(100000, () => c.pushFront($strFX(8)))
+        console.timeEnd('list push front 10^6 x 8 bytes string')
+        //
+        console.time('array clear')
+        a.splice(0, a.length - 1)
+        console.timeEnd('array clear')
+        //
+        console.time('list clear')
+        b.clear()
+        console.timeEnd('list clear')
+    })
+    it('benchmark push string heavy', () => {
+        const a = new Array()
+        const b = new list()
+        const c = new list()
+        console.time('array push 10^6 x 32 bytes string')
+        repeat(100000, () => a.push($strFX(32)))
+        console.timeEnd('array push 10^6 x 32 bytes string')
+        //
+        console.time('list push 10^6 x 32 bytes string')
+        repeat(100000, () => b.pushBack($strFX(32)))
+        console.timeEnd('list push 10^6 x 32 bytes string')
+        //
+        console.time('list push front 10^6 x 32 bytes string')
+        repeat(100000, () => c.pushFront($strFX(32)))
+        console.timeEnd('list push front 10^6 x 32 bytes string')
+        //
+        console.time('array clear')
+        a.splice(0, a.length - 1)
+        console.timeEnd('array clear')
+        //
+        console.time('list clear')
+        b.clear()
+        console.timeEnd('list clear')
+    })
+    it('benchmark random splicing on length 10^5', () => {
+        const a = new Array()
+        const b = new list()
+        // prep
+        indexedRepeat(10000, i => a.push(i))
+        indexedRepeat(10000, i => b.pushBack(i))
+        //
+        console.time('array random splicing')
+        repeat(1000, () => a.splice(RDM(0, a.length), RDM(0, 100)) )
+        console.timeEnd('array random splicing')
+        //
+        console.time('list random splicing')
+        repeat(1000, () => b.splice(RDM(0, b.length), RDM(0, 100)))
+        console.timeEnd('list random splicing')
+    })
+    it('benchmark random splicing on length 10^5 with adding 10^5', () => {
+        const a = new Array()
+        const b = new list()
+        // prep
+        indexedRepeat(10000, i => a.push(i))
+        indexedRepeat(10000, i => b.pushBack(i))
+        // ...$seirNA(1000)
+        console.time('array random splicing with adding 10^5')
+        repeat(100, () => a.splice(RDM(0, a.length), RDM(0, 10), ...$seirNA(100)))
+        console.timeEnd('array random splicing with adding 10^5')
+        //
+        console.time('list random splicing with adding 10^5')
+        repeat(100, () => b.splice(RDM(0, b.length), RDM(0, 10), ...$seirNA(100)))
+        console.timeEnd('list random splicing with adding 10^5')
+    })
+    it('benchmark loop on length 10^6', () => {
+        const a = new Array()
+        const b = new list()
+        // prep
+        indexedRepeat(100000, i => a.push(i))
+        indexedRepeat(100000, i => b.pushBack(i))
+        //
+        console.time('array map1')
+        a.map((v, i) => v * i)
+        console.timeEnd('array map1')
+        //
+        console.time('list map1')
+        b.map((v, i) => v * i)
+        console.timeEnd('list map1')
+        //
+        let sum1 = 0
+        let sum2 = 0
+        console.time('array for...of loop')
+        for (const v of a) {
+            sum1 += v
+        }
+        console.timeEnd('array for...of loop')
+        //
+        console.time('list for...of loop')
+        for (const v of b) {
+            sum2 += v
+        }
+        console.timeEnd('list for...of loop')
     })
 })
