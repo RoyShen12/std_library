@@ -492,18 +492,34 @@ describe('class list test: ', () => {
         b.map((v, i) => v * i)
         console.timeEnd('list map1')
         //
+        console.time('array map2')
+        a.map((v, i) => Math.pow(v, 2) * Math.pow(i, 2))
+        console.timeEnd('array map2')
+        //
+        console.time('list map2')
+        b.map((v, i) => Math.pow(v, 2) * Math.pow(i, 2))
+        console.timeEnd('list map2')
+        //
+        console.time('array filter')
+        a.filter((v, i) => v * i > 10000)
+        console.timeEnd('array filter')
+        //
+        console.time('list filter')
+        b.filter((v, i) => v * i > 10000)
+        console.timeEnd('list filter')
+        //
         let sum1 = 0
         let sum2 = 0
-        console.time('array for...of loop')
+        console.time('array for...of loop1')
         for (const v of a) {
             sum1 += v
         }
-        console.timeEnd('array for...of loop')
+        console.timeEnd('array for...of loop1')
         //
-        console.time('list for...of loop')
+        console.time('list for...of loop1')
         for (const v of b) {
             sum2 += v
         }
-        console.timeEnd('list for...of loop')
+        console.timeEnd('list for...of loop1')
     })
 })

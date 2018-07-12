@@ -28,22 +28,22 @@ const inRangeR = (target, rangeS, rangeE) => target > rangeS && target <= rangeE
 const inRangeLR = (target, rangeS, rangeE) => target >= rangeS && target <= rangeE
 const deepCopy = source => JSON.parse(JSON.stringify(source))
 const isNullPtr = ptr => ptr === undefined || ptr === null
-const defaultEqu = (a, b) => a === b
+const defaultEqu = (a, b) => a == b
 const defaultLess = (a, b) => a < b    // true  false
 const defaultMinus = (a, b) => a - b   //  <0    >0
 /**
  * - the node structure to composite a list
  * 
- *  <--[previousPtr]-- ( Node: ( _data ) ) --[nextPtr]-->
+ *  <--[previousPtr]-- ( _Node: ( _data ) ) --[nextPtr]-->
  * 
  * @private {any} _data - element of the node
- * @private {Node} previousPtr - previous node
- * @private {Node} nextPtr - next node
+ * @private {_Node} previousPtr - previous node
+ * @private {_Node} nextPtr - next node
  */
-class Node {
+class _Node {
     static isNode(objToTest) {
         return (
-            objToTest instanceof Node &&
+            objToTest instanceof _Node &&
             objToTest.hasOwnProperty('_data') &&
             objToTest.hasOwnProperty('previousPtr') &&
             objToTest.hasOwnProperty('nextPtr')
@@ -53,17 +53,19 @@ class Node {
         this._data = elem
         this.previousPtr = frontElem
         this.nextPtr = nextElem
+        __verbose('new _Node created')
     }
     // escape this node, illegal while has no pre or next node
     escape() {
-        if (!Node.isNode(this.previousPtr) || !Node.isNode(this.nextPtr)) {
-            __warn('[Node.escape] bad call, expect previousPtr and nextPtr exists')
+        if (!_Node.isNode(this.previousPtr) || !_Node.isNode(this.nextPtr)) {
+            __warn('[_Node.escape] bad call, expect previousPtr and nextPtr exists')
             return
         }
         this.previousPtr.nextPtr = this.nextPtr
         this.nextPtr.previousPtr = this.previousPtr
         this.previousPtr = null
         this.nextPtr = null
+        __verbose('_Node escaped')
         return this._data
     }
     // just like a deconstructor
@@ -71,6 +73,7 @@ class Node {
         this._data = null
         this.previousPtr = null
         this.nextPtr = null
+        __verbose('_Node destoryed')
     }
 }
 /**
@@ -83,7 +86,7 @@ class Node {
  *      |
  * [previousPtr]
  *      |
- *  ( HeadNode: (_data) ) --[nextPtr]--> ( *Node: (_data) ) --[nextPtr]--> ...... --[nextPtr]--> ( TailNode: (_data) ) --[nextPtr]--> ( null )
+ *  ( HeadNode: (_data) ) --[nextPtr]--> ( *_Node: (_data) ) --[nextPtr]--> ...... --[nextPtr]--> ( TailNode: (_data) ) --[nextPtr]--> ( null )
  *                       <--[previousPtr]--                <--[previousPtr]--    <--[previousPtr]--
  * 
  *                                                         [<-     _length      ->]
@@ -91,8 +94,8 @@ class Node {
  * - * in List, methods with a prefix 'const', like { const_at },{ const_begin }, has indicated that
  *   these methods will return a copy not the reference of the elements' '_data' property.
  * 
- * @private {Node} HeadNode - first node | null
- * @private {Node} TailNode - last node | null
+ * @private {_Node} HeadNode - first node | null
+ * @private {_Node} TailNode - last node | null
  * @private {Number} _length - size of list 
  */
 class list {
@@ -122,13 +125,13 @@ class list {
 
     constructor(elem) {
         if (isNullPtr(elem)) { // empty constructor
-            __log('empty constructor')
+            __verbose('empty constructor')
             this.HeadNode = null
             this.TailNode = null
             this._length = 0
         } else {
             if (list.isList(elem)) { // copy constructor
-                __log('copy constructor')
+                __verbose('copy constructor')
                 this.HeadNode = null
                 this.TailNode = null
                 this._length = 0
@@ -136,7 +139,7 @@ class list {
                     this.pushBack(deepCopy(node._data))
                 })
             } else if (Array.isArray(elem)) { // copy from array constructor
-                __log('array copy constructor')
+                __verbose('array copy constructor')
                 this.HeadNode = null
                 this.TailNode = null
                 this._length = 0
@@ -144,8 +147,8 @@ class list {
                     this.pushBack(e)
                 }
             } else { // single element pushing constructor
-                __log('default constructor')
-                const node = new Node(elem, null, null)
+                __verbose('default constructor')
+                const node = new _Node(elem, null, null)
                 this.HeadNode = node
                 this.TailNode = node
                 this._length = 1
@@ -271,13 +274,13 @@ class list {
             __warn('[list.pushFront] cannot push parameter 0 which is null or undefined')
             return
         }
-        const node = new Node(elem, null, this.HeadNode)
-        if (this.HeadNode !== null) {
+        const node = new _Node(elem, null, this.HeadNode)
+        if (this.HeadNode) {
             this.HeadNode.previousPtr = node
         }
         this.HeadNode = node
         // if this is an empty list
-        if (this.TailNode === null) {
+        if (!this.TailNode) {
             this.TailNode = node
         }
         this._length++
@@ -290,13 +293,13 @@ class list {
             __warn('[list.pushBack] cannot push parameter 0 which is null or undefined')
             return
         }
-        const node = new Node(elem, this.TailNode, null)
-        if (this.TailNode !== null) {
+        const node = new _Node(elem, this.TailNode, null)
+        if (this.TailNode) {
             this.TailNode.nextPtr = node
         }
         this.TailNode = node
         // if this is empty
-        if (this.HeadNode === null) {
+        if (!this.HeadNode) {
             this.HeadNode = node
         }
         this._length++
@@ -312,18 +315,18 @@ class list {
         }
         position = ~~position
         if (position === 0) {
-            const node = new Node(elem, this.HeadNode, this.HeadNode.nextPtr)
+            const node = new _Node(elem, this.HeadNode, this.HeadNode.nextPtr)
             this.HeadNode.nextPtr.previousPtr = node
             this.HeadNode.nextPtr = node
             this._length++
-        } else if (position === this.size() - 1) {
+        } else if (position == this.size() - 1) {
             this.pushBack(elem)
         } else {
             if (position < this.size() / 2) {
                 this.itr((index, p) => {
                     if (index === position) {
                         const pNext = p.nextPtr
-                        const node = new Node(elem, p, pNext)
+                        const node = new _Node(elem, p, pNext)
                         p.nextPtr = node
                         pNext.previousPtr = node
                         this._length++
@@ -334,7 +337,7 @@ class list {
                 this.reverse_itr((index, p) => {
                     if (index === position) {
                         const pNext = p.nextPtr
-                        const node = new Node(elem, p, pNext)
+                        const node = new _Node(elem, p, pNext)
                         p.nextPtr = node
                         pNext.previousPtr = node
                         this._length++
@@ -348,7 +351,7 @@ class list {
 
     popFront() {
         let ans = this.HeadNode ? this.HeadNode._data : null
-        if (this.HeadNode !== null) {
+        if (this.HeadNode) {
             this.HeadNode.nextPtr.previousPtr = null
             this.HeadNode = this.HeadNode.nextPtr
             this._length--
@@ -358,7 +361,7 @@ class list {
 
     popBack() {
         let ans = this.TailNode ? this.TailNode._data : null
-        if (this.TailNode !== null) {
+        if (this.TailNode) {
             this.TailNode.previousPtr.nextPtr = null
             this.TailNode = this.TailNode.previousPtr
             this._length--
@@ -419,12 +422,9 @@ class list {
         let p = null
         let index = -1
         do {
-            p === null ? p = this.HeadNode : p = p.nextPtr
-            index++
-            let cmd = callback(index, p)
-            if (cmd === -1)
-                break
-        } while (!isNullPtr(p.nextPtr))
+            !p ? p = this.HeadNode : p = p.nextPtr
+            if (callback(++index, p) == -1) break
+        } while (p.nextPtr)
     }
     /**
      * reverse iterator
@@ -442,12 +442,9 @@ class list {
         let p = null
         let index = this.size()
         do {
-            p === null ? p = this.TailNode : p = p.previousPtr
-            index--
-            let cmd = callback(index, p)
-            if (cmd === -1)
-                break
-        } while (!isNullPtr(p.previousPtr))
+            !p ? p = this.TailNode : p = p.previousPtr
+            if (callback(--index, p) == -1) break
+        } while (p.previousPtr)
     }
     // specifies the default iterator for list
     // make list able to called by for...of
@@ -468,8 +465,8 @@ class list {
                 next() {
                     p ? p = p.nextPtr : p = thisH
                     return {
-                        value: p !== null ? p._data : null,
-                        done: p === null
+                        value: p ? p._data : undefined,
+                        done: !!p
                     }
                 }
             }
@@ -540,6 +537,7 @@ class list {
         let ans = true
         this.itr((index, node) => {
             ans = ans && callback(node._data, index, this)
+            return ans ? 0 : -1
         })
         return ans
     }
