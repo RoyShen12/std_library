@@ -389,7 +389,7 @@ class list {
         if (n < 1) {
             return new list()
         }
-        n > this.size() - 1 ? n = this.size() - 1 : void (0)
+        n > this.size() ? n = this.size() : void (0)
         n = ~~n
         const lp = list.clone(this)
         lp.splice(0, n)
@@ -400,7 +400,7 @@ class list {
         if (n < 1) {
             return new list()
         }
-        n > this.size() - 1 ? n = this.size() - 1 : void (0)
+        n > this.size() ? n = this.size() : void (0)
         n = ~~n
         const lp = list.clone(this)
         lp.reverse().splice(0, n)
@@ -861,6 +861,7 @@ class list {
         this.HeadNode = null
         this.TailNode = null
         __log('clear over')
+        return this
     }
 
     reverse() {
@@ -989,16 +990,22 @@ class list {
         if (list.isList(anotherListRef)) {
             if (anotherListRef._length === 0 || anotherListRef.HeadNode === null || anotherListRef.TailNode === null) {
                 __warn('[list.back_concat] bad concat parameter 0')
-                return
+                return this
             }
             anotherListRef = list.clone(anotherListRef)
-            this.TailNode.nextPtr = anotherListRef.HeadNode
-            anotherListRef.HeadNode.previousPtr = this.TailNode
+            if (this.TailNode) {
+                this.TailNode.nextPtr = anotherListRef.HeadNode
+                anotherListRef.HeadNode.previousPtr = this.TailNode
+            } else {
+                this.HeadNode = anotherListRef.HeadNode
+            }
             this.TailNode = anotherListRef.TailNode
             this._length += anotherListRef._length
             return this
+        } else if (Array.isArray(anotherListRef) && anotherListRef.length > 0) {
+            return this.back_concat(list.fromArray(anotherListRef))
         } else {
-            __warn('[list.back_concat] NullPtr concat parameter 0')
+            __warn('[list.back_concat] bad concat parameter 0, expected list or Array')
             return
         }
     }
@@ -1007,32 +1014,47 @@ class list {
         if (list.isList(anotherListRef)) {
             if (anotherListRef._length === 0 || anotherListRef.HeadNode === null || anotherListRef.TailNode === null) {
                 __warn('[list.front_concat] bad concat parameter 0')
-                return
+                return this
             }
             anotherListRef = list.clone(anotherListRef)
-            this.HeadNode.previousPtr = anotherListRef.TailNode
-            anotherListRef.TailNode.nextPtr = this.HeadNode
+            if (this.HeadNode) {
+                this.HeadNode.previousPtr = anotherListRef.TailNode
+                anotherListRef.TailNode.nextPtr = this.HeadNode
+            } else {
+                this.TailNode = anotherListRef.TailNode
+            }
             this.HeadNode = anotherListRef.HeadNode
             this._length += anotherListRef._length
             return this
+        } else if (Array.isArray(anotherListRef) && anotherListRef.length > 0) {
+            return this.front_concat(list.fromArray(anotherListRef))
         } else {
-            __warn('[list.front_concat] NullPtr concat parameter 0')
+            __warn('[list.front_concat] bad concat parameter 0, expected list or Array')
             return
         }
     }
 
+    // position: [-1, length-1], concat after position
     concat(anotherListRef, position = this.size() - 1) {
         if (list.isList(anotherListRef)) {
             if (anotherListRef === this) {
                 __warn('[list.concat] self concating is not allowed, use [front_concat] or [back_concat] to instead')
                 return
             }
-            if (typeof (position) !== 'number' || Number.isNaN(position) || !inRangeLR(position, 0, this.size() - 1)) {
+            if (this.empty()) {
+                __log('[list.concat], concat target on the empty this list')
+                anotherListRef = list.clone(anotherListRef)
+                this.HeadNode = anotherListRef.HeadNode
+                this.TailNode = anotherListRef.TailNode
+                this._length = anotherListRef._length
+                return this
+            }
+            if (typeof (position) !== 'number' || Number.isNaN(position) || !inRangeLR(position, -1, this.size() - 1)) {
                 __warn('[list.concat] failed with parameter 1 of null/errorRange/errorType')
                 return
             }
             position = ~~position
-            if (position === 0) {
+            if (position === -1) {
                 return this.front_concat(anotherListRef)
             } else if (position === this.size() - 1) {
                 return this.back_concat(anotherListRef)
@@ -1072,8 +1094,10 @@ class list {
                     return this
                 }
             }
+        } else if (Array.isArray(anotherListRef) && anotherListRef.length > 0) {
+            return this.concat(list.fromArray(anotherListRef), position)
         } else {
-            __warn('[list.front_concat] NullPtr concat parameter 0')
+            __warn('[list.front_concat] bad concat parameter 0, expected list or Array')
             return
         }
     }
@@ -1090,6 +1114,10 @@ class list {
             anotherListRef.TailNode = pTail
             anotherListRef._length = pLength
         }
+    }
+
+    toJson() {
+        return JSON.stringify(this.toArray())
     }
 
     consolePrint(needIndex) {

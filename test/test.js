@@ -1,6 +1,6 @@
 // mocha unit test
 const expect = chai.expect
-const insertSeperator = ' ------------------------------ '
+const insertSeperator = ' ------------------------------------------------------------------------------------------ '
 // test util
 const RDM = (lower, upper) => ~~(lower + Math.floor(Math.random() * (upper - lower + 1)))
 const repeat = (n, func, ...args) => {
@@ -35,6 +35,44 @@ const $seirOBJ = (n) => {
         }
     }
 }
+const $sameObj = () => {
+    return {
+        a: 1,
+        b: {
+            c: 2,
+            d: {
+                e: 3,
+                f: {
+                    g: 4,
+                    h: [{
+                        i: 5,
+                        j: 6
+                    }]
+                }
+            }
+        }
+    }
+}
+const $selfRefObj = () => {
+    const obj = {
+        a: 1,
+        b: {
+            c: 2,
+            d: {
+                e: 3,
+                f: {
+                    g: 4,
+                    h: [{
+                        i: 5,
+                        j: null
+                    }]
+                }
+            }
+        }
+    }
+    obj.b.d.f.h[1].j = obj
+    return obj
+}
 const $randStr = () => 10000 * Math.random() + '' + 10000 * Math.random()
 const $strFX = bits => {
     let ret = ''
@@ -56,6 +94,35 @@ const boolInst = new list()
 const strInst = new list()
 
 describe('class list test: ', () => {
+    it('list::[static]isList with right param' + insertSeperator + 'expected passing through', () => {
+        expect(list.isList(new list())).to.be.true
+        expect(list.isList(new list(1))).to.be.true
+        expect(list.isList(new list(anyArr))).to.be.true
+        class list_ extends list { }
+        expect(list.isList(new list_())).to.be.true
+    })
+    it('list::[static]isList with bad param' + insertSeperator + 'expected not passing through', () => {
+        expect(list.isList()).to.be.false
+        expect(list.isList(null)).to.be.false
+        expect(list.isList([])).to.be.false
+        expect(list.isList({})).to.be.false
+        expect(list.isList({ HeadNode: null, TailNode: null, _length: 0 })).to.be.false
+        expect(list.isList(NaN)).to.be.false
+        expect(list.isList(1)).to.be.false
+        expect(list.isList('1')).to.be.false
+        expect(list.isList(true)).to.be.false
+        expect(list.isList(() => { })).to.be.false
+    })
+    it('list::[static]clone' + insertSeperator + 'works correctly', () => {
+        const obj1 = { a: 1 }
+        const obj2 = { b: 2 }
+        const a = new list([obj1, obj2])
+        const b = list.clone(a)
+        expect(a.at(0)).to.deep.equal(b.at(0))
+        expect(a.at(0) === b.at(0)).to.be.false
+        expect(a.at(1)).to.deep.equal(b.at(1))
+        expect(a.at(1) === b.at(1)).to.be.false
+    })
     it('list::constructor(integer)' + insertSeperator + 'works correctly', () => {
         let i = 0
         instB.pushBack(1)
@@ -166,21 +233,12 @@ describe('class list test: ', () => {
     })
     it('list::fill(object)' + insertSeperator + 'works correctly', () => {
         const cpi = new list(instA)
-        cpi.fill($seirOBJ())
+        cpi.fill($sameObj())
         let i = cpi.size() - 1
-        while (i-- > 0)
+        while (i-- > 0) {
             expect(cpi.at(i)).to.be.an('object')
-    })
-    it('list::fill(object&)' + insertSeperator + 'works correctly', () => {
-        const cpi = new list(instA)
-        const objr = {
-            a: 111,
-            b: 222
+            i > 2 ? expect(cpi.at(i) === cpi.at(i - 1)).to.be.true : void (0)
         }
-        cpi.fill(objr)
-        let i = cpi.size() - 1
-        while (i-- > 0)
-            expect(cpi.at(i)).to.be.an('object')
     })
     it('list::fill(string)' + insertSeperator + 'works correctly', () => {
         const cpi = new list(instA)
@@ -216,46 +274,119 @@ describe('class list test: ', () => {
         expect(cpi.at(3)).to.deep.equal(anyArr)
         expect(cpi.at(4)).to.deep.equal(anyArr)
     })
-    it('list::pushFront(number)' + insertSeperator + 'works correctly', () => {
+    it('list::fill(any, start, end, true)' + insertSeperator + 'could extend this list', () => {
+        const kk = new list([0, 1, 2, 3, 4, 5, 6, 7])
+        kk.fill(-1, 0, 140, true)
+        let i = kk.size() - 1
+        while (i-- > 0)
+            expect(kk.at(i)).to.be.a('number')
+    })
+    it('list::fill -> this&' + insertSeperator + 'works correctly', () => {
+        const kk = new list([0, 1, 2, 3, 4, 5, 6, 7])
+        expect(kk.fill(-1, 0, 140, true) === kk).to.be.true
+    })
+    it('list::pushFront all func' + insertSeperator + 'works correctly', () => {
         emptyInst.clear()
+        emptyInst.pushFront()
+        expect(emptyInst.data).to.deep.equal([])
         const testNA = []
         let i = 0
-        repeat(1000, (n) => testNA.push(n), Math.random())
-        repeat(1000, (n) => {
-            emptyInst.pushFront(n)
-            expect(emptyInst.at(0)).to.equal(n)
-        }, testNA[i++])
+        repeat(10, n => { const n_ = n(); testNA.push(n_); emptyInst.pushFront(n_) }, Math.random)
+        i = emptyInst.size() - 1
+        testNA.reverse()
+        while (i-- > 0)
+            expect(emptyInst.at(i)).to.equal(testNA[i])
+        emptyInst.clear()
+        emptyInst.pushFront(1)
+        expect(emptyInst.at(0)).to.equal(1)
+        emptyInst.pushFront(2).pushFront(3)
+        // 3 2 1
+        expect(emptyInst.at(0)).to.equal(3)
+        expect(emptyInst.at(1)).to.equal(2)
+        expect(emptyInst.at(2)).to.equal(1)
+        expect(emptyInst.pushFront(4) === emptyInst).to.be.true
+    })
+    it('list::pushBack all func' + insertSeperator + 'works correctly', () => {
+        emptyInst.clear()
+        emptyInst.pushBack()
+        expect(emptyInst.data).to.deep.equal([])
+        const testNA = []
+        let i = 0
+        repeat(10, n => { const n_ = n(); testNA.push(n_); emptyInst.pushBack(n_) }, Math.random)
         i = emptyInst.size() - 1
         while (i-- > 0)
             expect(emptyInst.at(i)).to.equal(testNA[i])
-    })
-    it('list::pushFront(object)' + insertSeperator + 'works correctly', () => {
         emptyInst.clear()
-        repeat(1000, (obj) => {
-            emptyInst.pushFront(obj)
-            expect(emptyInst.at(0)).to.deep.equal(obj)
-        }, $seirOBJ(Math.random()))
-        const testRF = new list()
-        testRF.pushFront({ a: 1, b: 2 })
-        testRF.pushFront({ a: 1, b: 2 })
-        expect(testRF.at(0) === testRF.at(1)).to.be.false
+        emptyInst.pushBack(1)
+        expect(emptyInst.at(0)).to.equal(1)
+        emptyInst.pushBack(2).pushBack(3)
+        // 1 2 3
+        expect(emptyInst.at(0)).to.equal(1)
+        expect(emptyInst.at(1)).to.equal(2)
+        expect(emptyInst.at(2)).to.equal(3)
+        expect(emptyInst.pushBack(4) === emptyInst).to.be.true
     })
-    it('list::pushFront(object&)' + insertSeperator + 'works correctly', () => {
+    it('list::insert all func' + insertSeperator + 'works correctly', () => {
         emptyInst.clear()
-        const objr = {
-            a: 111,
-            b: 222
-        }
-        repeat(1001, () => {
-            emptyInst.pushFront(objr)
-        })
-        expect(emptyInst.at(0)).to.deep.equal(objr)
-        repeat(100, () => {
-            const n1 = ~~(1000 * Math.random())
-            const n2 = ~~(1000 * Math.random())
-            emptyInst.at(n1) === emptyInst.at(n2) ? void (0) : console.log(n1, n2, emptyInst.at(n1), emptyInst.at(n2))
-            expect(emptyInst.at(n1) === emptyInst.at(n2)).to.be.true
-        })
+        emptyInst.insert(0, -1)
+        expect(emptyInst.data).to.deep.equal([])
+        emptyInst.pushBack(1).pushBack(2).pushBack(3)
+        emptyInst.insert(0, 0)
+        expect(emptyInst.data).to.deep.equal([1, 0, 2, 3])
+        emptyInst.insert(-3, 3)
+        expect(emptyInst.data).to.deep.equal([1, 0, 2, 3, -3])
+        emptyInst.insert(-4, 2)
+        expect(emptyInst.data).to.deep.equal([1, 0, 2, -4, 3, -3])
+        expect(emptyInst.insert(-20, 3) === emptyInst).to.be.true
+    })
+    it('list::popFront all func' + insertSeperator + 'works correctly', () => {
+        emptyInst.clear()
+        expect(emptyInst.popFront()).to.be.null
+        emptyInst.pushBack(1).pushBack(2).pushBack(3)
+        expect(emptyInst.popFront()).to.equal(1)
+        expect(emptyInst.data).to.deep.equal([2, 3])
+    })
+    it('list::popBack all func' + insertSeperator + 'works correctly', () => {
+        emptyInst.clear()
+        expect(emptyInst.popBack()).to.be.null
+        emptyInst.pushBack(1).pushBack(2).pushBack(3)
+        expect(emptyInst.popBack()).to.equal(3)
+        expect(emptyInst.data).to.deep.equal([1, 2])
+    })
+    it('list::drop all func' + insertSeperator + 'works correctly', () => {
+        emptyInst.clear()
+        expect(emptyInst.drop().data).to.deep.equal([])
+        emptyInst.pushBack(1).pushBack(2).pushBack(3)
+        // 1
+        expect(emptyInst.drop().data).to.deep.equal([2, 3])
+        // 2
+        expect(emptyInst.drop(2).data).to.deep.equal([3])
+        // >= 3
+        expect(emptyInst.drop(3).data).to.deep.equal([])
+        expect(emptyInst.drop(4).data).to.deep.equal([])
+    })
+    it('list::dropRight all func' + insertSeperator + 'works correctly', () => {
+        emptyInst.clear()
+        expect(emptyInst.dropRight().data).to.deep.equal([])
+        emptyInst.pushBack(1).pushBack(2).pushBack(3)
+        // 1
+        expect(emptyInst.dropRight().data).to.deep.equal([1, 2])
+        // 2
+        expect(emptyInst.dropRight(2).data).to.deep.equal([1])
+        // >= 3
+        expect(emptyInst.dropRight(3).data).to.deep.equal([])
+        expect(emptyInst.dropRight(4).data).to.deep.equal([])
+        //
+        emptyInst.clear()
+        // 1 2 3 4
+        emptyInst.pushBack(1).pushBack(2).pushBack(3).pushBack(4)
+        expect(emptyInst.drop()).to.deep.equal(list.fromArray([2, 3, 4]))
+        expect(emptyInst.dropRight()).to.deep.equal(list.fromArray([1, 2, 3]))
+        expect(emptyInst.drop(2)).to.deep.equal(list.fromArray([3, 4]))
+        expect(emptyInst.dropRight(2)).to.deep.equal(list.fromArray([1, 2]))
+    })
+    it('list::itr all func' + insertSeperator + 'works correctly', () => {
+        // emptyInst.clear().back_concat([0, 1, 2, 3, 4, 5, 6, 7, 8, 9])
     })
     it('list::splice all func' + insertSeperator + 'works correctly', () => {
         emptyInst.clear()
@@ -343,37 +474,53 @@ describe('class list test: ', () => {
             expect(tmp).to.deep.equal(ans)
         })
     })
-    it('list::concat/list::front_concat/list::back_concat' + insertSeperator + 'works correctly', () => {
+    it('list::concat / list::front_concat / list::back_concat' + insertSeperator + 'works correctly', () => {
         const list1 = list.fromArray([1, 2, 3, 4, 5, 6, 7, 8, 9])
         const list2 = list.fromArray([-1, -2, -3, -4, -5, -6, -7, -8, -9])
         const list3 = list.fromArray(['a', 'b', 'c', 'd', 'e'])
         const list4 = list.fromArray([{ a: 1, b: 2 }, { c: 3, d: 4 }])
         list1.front_concat(list2)
         expect(list1).to.be.deep.equal(list.fromArray([-1, -2, -3, -4, -5, -6, -7, -8, -9, 1, 2, 3, 4, 5, 6, 7, 8, 9]))
+        // input array
+        list1.front_concat([-1, -32])
+        expect(list1).to.be.deep.equal(list.fromArray([-1, -32, -1, -2, -3, -4, -5, -6, -7, -8, -9, 1, 2, 3, 4, 5, 6, 7, 8, 9]))
         expect(list2.TailNode.nextPtr).to.equal(null)
         list3.back_concat(list4)
         expect(list3).to.be.deep.equal(list.fromArray(['a', 'b', 'c', 'd', 'e', { a: 1, b: 2 }, { c: 3, d: 4 }]))
+        // input array
+        list3.back_concat([{ p: 1 }, { p: 2 }])
+        expect(list3).to.be.deep.equal(list.fromArray(['a', 'b', 'c', 'd', 'e', { a: 1, b: 2 }, { c: 3, d: 4 }, { p: 1 }, { p: 2 }]))
         expect(list4.HeadNode.previousPtr).to.equal(null)
         const list5 = list.fromArray([1, 2, 3, 4])
         const list6 = list.fromArray([6, 7, 8, 9])
+        const list7 = list.fromArray([1, 2, 3, 4])
+        list7.concat(list6, -1)
+        expect(list7).to.deep.equal(list.fromArray([6, 7, 8, 9, 1, 2, 3, 4]))
         list5.concat(list6, 0)
-        expect(list5).to.deep.equal(list.fromArray([6, 7, 8, 9, 1, 2, 3, 4]))
+        expect(list5).to.deep.equal(list.fromArray([1, 6, 7, 8, 9, 2, 3, 4]))
         list5.concat(list6, 9)
-        expect(list5).to.deep.equal(list.fromArray([6, 7, 8, 9, 1, 2, 3, 4]))
+        expect(list5).to.deep.equal(list.fromArray([1, 6, 7, 8, 9, 2, 3, 4]))
         list5.concat(list6, 7)
-        expect(list5).to.deep.equal(list.fromArray([6, 7, 8, 9, 1, 2, 3, 4, 6, 7, 8, 9]))
+        expect(list5).to.deep.equal(list.fromArray([1, 6, 7, 8, 9, 2, 3, 4, 6, 7, 8, 9]))
         // mid concat
         list5.concat(list6, 4)
-        expect(list5).to.deep.equal(list.fromArray([6, 7, 8, 9, 1, 6, 7, 8, 9, 2, 3, 4, 6, 7, 8, 9]))
-    })
-    it('list::drop/list::dropRight' + insertSeperator + 'works correctly', () => {
-        emptyInst.clear()
-        // 1 2 3 4
-        emptyInst.pushBack(1).pushBack(2).pushBack(3).pushBack(4)
-        expect(emptyInst.drop()).to.deep.equal(list.fromArray([2, 3, 4]))
-        expect(emptyInst.dropRight()).to.deep.equal(list.fromArray([1, 2, 3]))
-        expect(emptyInst.drop(2)).to.deep.equal(list.fromArray([3, 4]))
-        expect(emptyInst.dropRight(2)).to.deep.equal(list.fromArray([1, 2]))
+        expect(list5).to.deep.equal(list.fromArray([1, 6, 7, 8, 9, 6, 7, 8, 9, 2, 3, 4, 6, 7, 8, 9]))
+        // input array frt
+        list5.concat(['a', 'b'], -1)
+        expect(list5).to.deep.equal(list.fromArray(['a', 'b', 1, 6, 7, 8, 9, 6, 7, 8, 9, 2, 3, 4, 6, 7, 8, 9]))
+        // input array mid
+        list5.concat(['c', 'd'], 5)
+        expect(list5).to.deep.equal(list.fromArray(['a', 'b', 1, 6, 7, 8, 'c', 'd', 9, 6, 7, 8, 9, 2, 3, 4, 6, 7, 8, 9]))
+        // input array end
+        list5.concat(['e', 'f'], 19)
+        expect(list5).to.deep.equal(list.fromArray(['a', 'b', 1, 6, 7, 8, 'c', 'd', 9, 6, 7, 8, 9, 2, 3, 4, 6, 7, 8, 9, 'e', 'f']))
+        expect(list6.HeadNode.previousPtr).to.be.null
+        expect(list6.TailNode.nextPtr).to.be.null
+        const list8 = new list()
+        expect(list8
+            .concat([1, 2, 3], -1)
+            .concat(list.fromArray([4, 5]), 2)
+            .concat([6, 7, 8], 2).data).to.deep.equal([1, 2, 3, 6, 7, 8, 4, 5])
     })
     it('benchmark push number', () => {
         const a = new Array()
@@ -455,7 +602,7 @@ describe('class list test: ', () => {
         indexedRepeat(10000, i => b.pushBack(i))
         //
         console.time('array random splicing')
-        repeat(1000, () => a.splice(RDM(0, a.length), RDM(0, 100)) )
+        repeat(1000, () => a.splice(RDM(0, a.length), RDM(0, 100)))
         console.timeEnd('array random splicing')
         //
         console.time('list random splicing')
