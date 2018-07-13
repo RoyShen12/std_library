@@ -912,7 +912,7 @@ class list {
             __warn('[list.sort] expected a parameter 0 with a type "function"')
             return
         }
-        // define partion and qsort function
+        // define partion of qsort function
         function partion (pLow, pHigh) {
             const pivot = pLow._data
             while (pLow !== pHigh) {
