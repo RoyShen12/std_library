@@ -900,16 +900,12 @@ class list {
     }
     // quick sorting, may be unstable
     sort(cmpFunc = defaultMinus) {
+        if (this.some(D => typeof D === 'object') && cmpFunc === defaultMinus) {
+            __warn('[list.sort] object element require a specified cmpFunc')
+            return
+        }
         if (isNullPtr(this.HeadNode) || this.size() < 2) {
             __verbose('[list.sort] empty or too short list')
-            return this
-        }
-        // to long, using array sorting
-        // stack size: IE11 / CHROME = 1/2.238853729645168
-        if (this.size() > 2200) {
-            const arr = this.toArrayRef()
-            arr.sort(cmpFunc)
-            this.splice(0, this.size(), ...arr)
             return this
         }
         if (Object.prototype.toString.call(cmpFunc) !== '[object Function]') {
@@ -917,9 +913,8 @@ class list {
             return
         }
         // define partion and qsort function
-        const partion = (pLow, pHigh) => {
+        function partion (pLow, pHigh) {
             const pivot = pLow._data
-            //swapPM(pLow, pHigh, '_data')
             while (pLow !== pHigh) {
                 while (pLow !== pHigh && cmpFunc(pHigh._data, pivot) >= 0) pHigh = pHigh.previousPtr
                 pLow._data = pHigh._data
@@ -929,12 +924,50 @@ class list {
             pLow._data = pivot
             return pLow
         }
-        const quick_sort = (pstLow, pstHigh) => {
-            //console.log('quick_sort jumpinto', pstLow, pstHigh)
-            let pstTmp = partion(pstLow, pstHigh)
-            //console.log('quick_sort pstTmp', pstTmp)
-            pstTmp !== pstLow ? quick_sort(pstLow, pstTmp.previousPtr) : void(0)
-            pstTmp !== pstHigh ? quick_sort(pstTmp.nextPtr, pstHigh) : void (0)
+        function quick_sort(pl, ph) {
+            function quick_sort_inner(pstLow, pstHigh) {
+                let pstTmp = partion(pstLow, pstHigh)
+                return function () {
+                    if (pstTmp !== pstLow && pstTmp !== pstHigh) {
+                        return [quick_sort_inner(pstLow, pstTmp.previousPtr), quick_sort_inner(pstTmp.nextPtr, pstHigh)]
+                    } else if (pstTmp !== pstLow) {
+                        return [quick_sort_inner(pstLow, pstTmp.previousPtr)]
+                    } else if (pstTmp !== pstHigh) {
+                        return [quick_sort_inner(pstTmp.nextPtr, pstHigh)]
+                    } else {
+                        return
+                    }
+                }
+            }
+            function loopAtValue (value) {
+                const acp = []
+                value = value.map(V => {
+                    const tmp = typeof V === 'function' ? V() : undefined
+                    if (Array.isArray(tmp)) {
+                        acp.push(tmp[1])
+                        return tmp[0]
+                    } else if (!tmp) {
+                        return
+                    } else {
+                        return tmp
+                    }
+                })
+                return value.concat(acp)
+            }
+            function trampoline(func, arg) {
+                __log('trampoline param: ', func, arg)
+                let value = func.apply(func, arg)()
+                __log('trampoline func.apply(func, arg)->', value)
+                if (Array.isArray(value)) {
+                    __verbose('trampoline value is array: ', value)
+                    loopAtValue(value)
+                    while (value.some(V => typeof V === 'function')) {
+                        value = loopAtValue(value)
+                    }
+                }
+                return value
+            }
+            return trampoline.bind(null, quick_sort_inner)([pl, ph])
         }
 
         quick_sort(this.HeadNode, this.TailNode)

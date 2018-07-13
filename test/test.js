@@ -2,6 +2,7 @@
 const expect = chai.expect
 const insertSeperator = ' ------------------------------------------------------------------------------------------ '
 // test util
+const splitLine = console.log.bind(console, '%c################################################################', 'color: #409EFF')
 const RDM = (lower, upper) => ~~(lower + Math.floor(Math.random() * (upper - lower + 1)))
 const repeat = (n, func, ...args) => {
     for (let i = 1; i <= n; i++) {
@@ -58,6 +59,29 @@ const $sameObj = () => {
             }
         }
     }
+}
+const $notsameObj = n => {
+    return {
+        a: Math.random() * n,
+        b: {
+            c: 2,
+            d: {
+                e: 3,
+                f: {
+                    g: 4,
+                    h: [{
+                        i: 5,
+                        j: 6
+                    }]
+                }
+            }
+        }
+    }
+}
+const $nsoG = n => {
+    const p = []
+    repeat(n, () => { p.push($notsameObj(1000000)) })
+    return p
 }
 const $selfRefObj = () => {
     const obj = {
@@ -622,6 +646,7 @@ describe('class list test: ', () => {
         console.time('array<Number, 10000> sort')
         arr4.sort()
         console.timeEnd('array<Number, 10000> sort')
+        splitLine()
         //
         console.time('list<Number, 100> sort')
         list2.sort()
@@ -642,6 +667,7 @@ describe('class list test: ', () => {
         console.time('list<Number, 10000> sort')
         list4.sort()
         console.timeEnd('list<Number, 10000> sort')
+        splitLine()
         //
         spy1.resetHistory()
         list4.forEachTween(spy1)
@@ -668,6 +694,7 @@ describe('class list test: ', () => {
         console.time('list push front 10^6 number')
         repeat(100000, () => c.pushFront(0))
         console.timeEnd('list push front 10^6 number')
+        splitLine()
         //
         console.time('array clear')
         a.splice(0, a.length - 1)
@@ -676,6 +703,7 @@ describe('class list test: ', () => {
         console.time('list clear')
         b.clear()
         console.timeEnd('list clear')
+        splitLine()
     })
     it('benchmark push string easy', () => {
         const a = new Array()
@@ -692,6 +720,7 @@ describe('class list test: ', () => {
         console.time('list push front 10^6 x 8 bytes string')
         repeat(100000, () => c.pushFront($strFX(8)))
         console.timeEnd('list push front 10^6 x 8 bytes string')
+        splitLine()
         //
         console.time('array clear')
         a.splice(0, a.length - 1)
@@ -700,6 +729,7 @@ describe('class list test: ', () => {
         console.time('list clear')
         b.clear()
         console.timeEnd('list clear')
+        splitLine()
     })
     it('benchmark push string heavy', () => {
         const a = new Array()
@@ -716,6 +746,7 @@ describe('class list test: ', () => {
         console.time('list push front 10^6 x 32 bytes string')
         repeat(100000, () => c.pushFront($strFX(32)))
         console.timeEnd('list push front 10^6 x 32 bytes string')
+        splitLine()
         //
         console.time('array clear')
         a.splice(0, a.length - 1)
@@ -724,6 +755,7 @@ describe('class list test: ', () => {
         console.time('list clear')
         b.clear()
         console.timeEnd('list clear')
+        splitLine()
     })
     it('benchmark random splicing on length 10^5', () => {
         const a = new Array()
@@ -739,6 +771,7 @@ describe('class list test: ', () => {
         console.time('list random splicing')
         repeat(1000, () => b.splice(RDM(0, b.length), RDM(0, 100)))
         console.timeEnd('list random splicing')
+        splitLine()
     })
     it('benchmark random splicing on length 10^5 with adding 10^5', () => {
         const a = new Array()
@@ -754,6 +787,7 @@ describe('class list test: ', () => {
         console.time('list random splicing with adding 10^5')
         repeat(100, () => b.splice(RDM(0, b.length), RDM(0, 10), ...$seirNA(100)))
         console.timeEnd('list random splicing with adding 10^5')
+        splitLine()
     })
     it('benchmark loop on length 10^6', () => {
         const a = new Array()
@@ -769,6 +803,7 @@ describe('class list test: ', () => {
         console.time('list map1')
         b.map((v, i) => v * i)
         console.timeEnd('list map1')
+        splitLine()
         //
         console.time('array map2')
         a.map((v, i) => Math.pow(v, 2) * Math.pow(i, 2))
@@ -777,6 +812,7 @@ describe('class list test: ', () => {
         console.time('list map2')
         b.map((v, i) => Math.pow(v, 2) * Math.pow(i, 2))
         console.timeEnd('list map2')
+        splitLine()
         //
         console.time('array filter')
         a.filter((v, i) => v * i > 10000)
@@ -785,6 +821,7 @@ describe('class list test: ', () => {
         console.time('list filter')
         b.filter((v, i) => v * i > 10000)
         console.timeEnd('list filter')
+        splitLine()
         //
         let sum1 = 0
         let sum2 = 0
@@ -799,5 +836,85 @@ describe('class list test: ', () => {
             sum2 += v
         }
         console.timeEnd('list for...of loop1')
+        splitLine()
+    })
+    it('benchmark sort with 10^5 complex object load', () => {
+        const arr1 = $nsoG(10000)
+        expect(arr1.length).to.equal(10000)
+        const list1 = new list(arr1)
+        console.time('arr<Object, 10^5> sort')
+        arr1.sort((a, b) => a.a - b.a)
+        console.timeEnd('arr<Object, 10^5> sort')
+        console.time('list<Object, 10^5> sort')
+        list1.sort((a, b) => a.a - b.a)
+        console.timeEnd('list<Object, 10^5> sort')
+        splitLine()
+    })
+    it('benchmark sort with 10^6 complex object load', () => {
+        const arr1 = $nsoG(100000)
+        expect(arr1.length).to.equal(100000)
+        const list1 = new list(arr1)
+        console.time('arr<Object, 10^6> sort')
+        arr1.sort((a, b) => a.a - b.a)
+        console.timeEnd('arr<Object, 10^6> sort')
+        console.time('list<Object, 10^6> sort')
+        list1.sort((a, b) => a.a - b.a)
+        console.timeEnd('list<Object, 10^6> sort')
+        splitLine()
+    })
+    it('benchmark sort with 2*10^5 load', () => {
+        const arr1 = $RDnumberG(20000)
+        const list1 = new list(arr1)
+        console.time('arr<Number, 2*10^5> sort')
+        arr1.sort()
+        console.timeEnd('arr<Number, 2*10^5> sort')
+        console.time('list<Number, 2*10^5> sort')
+        list1.sort()
+        console.timeEnd('list<Number, 2*10^5> sort')
+        splitLine()
+    })
+    it('benchmark sort with 4*10^5 load', () => {
+        const arr1 = $RDnumberG(40000)
+        const list1 = new list(arr1)
+        console.time('arr<Number, 4*10^5> sort')
+        arr1.sort()
+        console.timeEnd('arr<Number, 4*10^5> sort')
+        console.time('list<Number, 4*10^5> sort')
+        list1.sort()
+        console.timeEnd('list<Number, 4*10^5> sort')
+        splitLine()
+    })
+    it('benchmark sort with 8*10^5 load', () => {
+        const arr1 = $RDnumberG(80000)
+        const list1 = new list(arr1)
+        console.time('arr<Number, 8*10^5> sort')
+        arr1.sort()
+        console.timeEnd('arr<Number, 8*10^5> sort')
+        console.time('list<Number, 8*10^5> sort')
+        list1.sort()
+        console.timeEnd('list<Number, 8*10^5> sort')
+        splitLine()
+    })
+    it('benchmark sort with 10^6 load', () => {
+        const arr1 = $RDnumberG(100000)
+        const list1 = new list(arr1)
+        console.time('arr<Number, 10^6> sort')
+        arr1.sort()
+        console.timeEnd('arr<Number, 10^6> sort')
+        console.time('list<Number, 10^6> sort')
+        list1.sort()
+        console.timeEnd('list<Number, 10^6> sort')
+        splitLine()
+    })
+    it('benchmark sort with 10^7 load', () => {
+        const arr1 = $RDnumberG(1000000)
+        const list1 = new list(arr1)
+        console.time('arr<Number, 10^7> sort')
+        arr1.sort()
+        console.timeEnd('arr<Number, 10^7> sort')
+        console.time('list<Number, 10^7> sort')
+        list1.sort()
+        console.timeEnd('list<Number, 10^7> sort')
+        splitLine()
     })
 })
