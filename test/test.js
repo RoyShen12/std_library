@@ -19,13 +19,19 @@ const anyArr = [-1, 0, 1, 141.215, 0.000151, {}, {
 },
 [1, 2, 4], '1314', ''
 ]
-const $seirNA = (n) => {
+const $seirNA = n => {
     const p = []
     for (let i = 0; i < n; i++)
         p.push(i)
     return p
 }
-const $seirOBJ = (n) => {
+const $RDnumberG = n => {
+    const p = []
+    for (let i = 0; i < n; i++)
+        p.push(Math.random())
+    return p
+}
+const $seirOBJ = n => {
     return {
         a: n,
         b: n * n,
@@ -77,11 +83,11 @@ const $randStr = () => 10000 * Math.random() + '' + 10000 * Math.random()
 const $strFX = bits => {
     let ret = ''
     for (let index = 0; index < bits; index++) {
-        ret += ((Math.random() * 16 | 0) & 0x3 | 0x8).toString(16)
+        ret += ((Math.random() * 16 | 0) & 0x3 | 0xc).toString(16)
     }
     return ret
 }
-const $randBol = () => Math.random() < 0.500000 ? true : false
+const $randBol = () => Math.random() < 0.5 ? true : false
 const instA = new list()
 const instB = new list()
 const instC = new list($seirNA(20))
@@ -521,6 +527,131 @@ describe('class list test: ', () => {
             .concat([1, 2, 3], -1)
             .concat(list.fromArray([4, 5]), 2)
             .concat([6, 7, 8], 2).data).to.deep.equal([1, 2, 3, 6, 7, 8, 4, 5])
+    })
+    it('list::remove all func' + insertSeperator + 'works correctly', () => {
+        const list1 = new list()
+        list1.remove()
+        expect(list1.data).to.deep.equal([])
+        list1.back_concat([1, 2, 3, 4, 5])
+        list1.remove(0)
+        expect(list1.data).to.deep.equal([2, 3, 4, 5])
+        list1.remove(3)
+        expect(list1.data).to.deep.equal([2, 3, 4])
+        list1.remove(1)
+        expect(list1.data).to.deep.equal([2, 4])
+        list1.remove(1)
+        expect(list1.data).to.deep.equal([2])
+        list1.remove(0)
+        expect(list1.data).to.deep.equal([])
+        const list2 = new list([1, 2, 3])
+        list2.remove(2).remove(1).remove(0)
+        expect(list2.data).to.deep.equal([])
+    })
+    it('list::remove all func' + insertSeperator + 'works correctly', () => {
+        const r1 = new list([])
+        const r2 = new list([1])
+        const r3 = new list([1, 2])
+        const r4 = new list([1, 2, 3, 4, 5])
+        const Larr = $strFX(100).split('')
+        const r5 = new list(Larr)
+        expect(r1.reverse().data).to.deep.equal([])
+        expect(r2.reverse().data).to.deep.equal([1])
+        expect(r3.reverse().data).to.deep.equal([2, 1])
+        expect(r4.reverse().data).to.deep.equal([5, 4, 3, 2, 1])
+        expect(r5.reverse().data).to.deep.equal(Larr.reverse())
+    })
+    it('list::forEachTween all func' + insertSeperator + 'works correctly', () => {
+        let sum = 0
+        let indexarr = []
+        const spy1 = sinon.spy((x1, x2, i1, i2, that) => {
+            sum += (x1 + x2)
+            indexarr.push(i1)
+            indexarr.push(i2)
+        })
+        const list1 = new list([1])
+        const list2 = new list([1, 2])
+        const list3 = new list([1, 2, 3, 4, 5, 6, 7, 8, 9])// 3+5+7+9+11+13+15+17=80
+        list1.forEachTween(spy1)
+        expect(spy1.called).to.be.false
+        //
+        list2.forEachTween(spy1)
+        expect(spy1.callCount).to.equal(1)
+        expect(sum).to.equal(3)
+        expect(indexarr).to.deep.equal([0, 1])
+        spy1.resetHistory()
+        sum = 0
+        indexarr = []
+        //
+        list3.forEachTween(spy1)
+        expect(spy1.callCount).to.equal(8)
+        expect(sum).to.equal(80)
+        expect(indexarr).to.deep.equal([0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8])
+    })
+    it('list::sort all func' + insertSeperator + 'works correctly', () => {
+        const list1 = new list([1])
+        //
+        const list_allsame1 = new list([1, 1])
+        const list_allsame2 = new list([2, 2, 2, 2, 2, 2, 2])
+        const list_allreverse1 = new list([3, 1])
+        const list_allreverse2 = new list([3, 2, 1, 0, -1, -2])
+        const list_has_same = new list([0, 3, 1, -2, 1])
+        const list_alreadysorted = new list([0, 1, 2, 3, 4, 5, 6, 7])
+        const list_alreadysorted_hassame = new list([0, 1, 1, 2, 3, 4, 4, 5, 5, 5, 5, 6, 7])
+        expect(list_allsame1.sort().data).to.deep.equal([1, 1])
+        expect(list_allsame2.sort().data).to.deep.equal([2, 2, 2, 2, 2, 2, 2])
+        expect(list_allreverse1.sort().data).to.deep.equal([1, 3])
+        expect(list_allreverse2.sort().data).to.deep.equal([-2, -1, 0, 1, 2, 3])
+        expect(list_has_same.sort().data).to.deep.equal([-2, 0, 1, 1, 3])
+        expect(list_alreadysorted.sort().data).to.deep.equal([0, 1, 2, 3, 4, 5, 6, 7])
+        expect(list_alreadysorted_hassame.sort().data).to.deep.equal([0, 1, 1, 2, 3, 4, 4, 5, 5, 5, 5, 6, 7])
+        //
+        const arr2 = $RDnumberG(100)
+        const arr3 = $RDnumberG(2000)
+        const arr4 = $RDnumberG(10000)
+        const list2 = new list(arr2)
+        const list3 = new list(arr3)// quick sort
+        const list4 = new list(arr4)// native sort
+        expect(list1.sort().data).to.deep.equal([1])
+        //
+        console.time('array<Number, 100> sort')
+        arr2.sort()
+        console.timeEnd('array<Number, 100> sort')
+        console.time('array<Number, 2000> sort')
+        arr3.sort()
+        console.timeEnd('array<Number, 2000> sort')
+        console.time('array<Number, 10000> sort')
+        arr4.sort()
+        console.timeEnd('array<Number, 10000> sort')
+        //
+        console.time('list<Number, 100> sort')
+        list2.sort()
+        console.timeEnd('list<Number, 100> sort')
+        //
+        const spy1 = sinon.spy((x, y) => expect(x <= y).to.be.true)
+        list2.forEachTween(spy1)
+        expect(spy1.callCount).to.equal(99)
+        //
+        console.time('list<Number, 2000> sort')
+        list3.sort()
+        console.timeEnd('list<Number, 2000> sort')
+        //
+        spy1.resetHistory()
+        list3.forEachTween(spy1)
+        expect(spy1.callCount).to.equal(1999)
+        //
+        console.time('list<Number, 10000> sort')
+        list4.sort()
+        console.timeEnd('list<Number, 10000> sort')
+        //
+        spy1.resetHistory()
+        list4.forEachTween(spy1)
+        expect(spy1.callCount).to.equal(9999)
+        // self cmp func
+        const list_obj = new list([{ sortv: 128}, {sortv: 15}, {sortv: 220}, {sortv: 192}, {sortv: 71}, {sortv: 41}, {sortv: 33}, {sortv: 50}])
+        const spy2 = sinon.spy((x, y) => expect(x.sortv >= y.sortv).to.be.true)
+        list_obj.sort((a, b) => b.sortv - a.sortv)
+        list_obj.forEachTween(spy2)
+        expect(spy2.callCount).to.equal(7)
     })
     it('benchmark push number', () => {
         const a = new Array()

@@ -28,9 +28,10 @@ const inRangeR = (target, rangeS, rangeE) => target > rangeS && target <= rangeE
 const inRangeLR = (target, rangeS, rangeE) => target >= rangeS && target <= rangeE
 const deepCopy = source => JSON.parse(JSON.stringify(source))
 const isNullPtr = ptr => ptr === undefined || ptr === null
-const defaultEqu = (a, b) => a == b
-const defaultLess = (a, b) => a < b    // true  false
-const defaultMinus = (a, b) => a - b   //  <0    >0
+const defaultEqu = (a, b) => a === b
+const defaultLess = (a, b) => a <= b    // true  false
+const defaultMinus = (a, b) => a - b   //  <=0    >0
+const swapPM = (a, b, prop) => a[prop] = -(b[prop] = (a[prop] += b[prop]) - b[prop]) + a[prop]// faster than normal temp swap
 /**
  * - the node structure to composite a list
  * 
@@ -509,8 +510,10 @@ class list {
         return data
     }
 
-    // do callback(elem) for every node->_data
-    // for example x.forEach( x => x = x**2 )
+    /**
+     *  - do callback(elem) for every node->_data
+     *  - for example x.forEach( x => x = x**2 )
+     */
     forEach(callback, start = 0, end = this.size() - 1) {
         if (Object.prototype.toString.call(callback) !== '[object Function]') {
             __warn('[list.forEach] expected a parameter 0 with a type "function"')
@@ -522,6 +525,27 @@ class list {
                     callback(node._data, index, this)
             })
         }
+    }
+    /**
+     *  - do callback(elem) for every two node->_data
+     *    for example x.forEach( (x1, x2) => console.log((x1 + x2) * (x1 - x2)) )
+     *  - (loop count: callback param): (1: [this.at(0), this.at(1), 0, 1, this]), (2: [this.at(1), this.at(2), 1, 2, this]), ...,
+     *    (this.size() - 1: [this.at(this.size() - 2), this.at(this.size() - 1), this.size() - 2, this.size() - 1, this])
+     */
+    forEachTween(callback, start = 0, end = this.size() - 1) {
+        if (this.size() < 2) {
+            __verbose('[list.forEachTween] exit with no enough elements')
+            return
+        }
+        if (Object.prototype.toString.call(callback) !== '[object Function]') {
+            __warn('[list.forEachTween] expected a parameter 0 with a type "function"')
+            return
+        }
+        this.itr((index, node) => {
+            if (index === this.size() - 1) return -1
+            if (inRangeLR(index, start, end))
+                callback(node._data, node.nextPtr._data, index, index + 1, this)
+        })
     }
     // The every method tests every element of this list
     // only returns true while all elements pass through the callback function
@@ -651,6 +675,10 @@ class list {
     }
     // remove a node by specifying it's index
     remove(position) {
+        if (this.empty()) {
+            __verbose('[list.remove] on a empty list')
+            return this
+        }
         if (typeof (position) !== 'number' || Number.isNaN(position)) {
             __warn('[list.remove] failed with parameter 0 of NullPtr/errorType/NaN')
             return
@@ -665,40 +693,37 @@ class list {
                 this.HeadNode = null
                 this.TailNode = null
                 this._length--
+                return this
             } else {
                 this.HeadNode.nextPtr.previousPtr = null
                 this.HeadNode = this.HeadNode.nextPtr
                 this._length--
+                return this
             }
         } else if (position === this.size() - 1) {
             this.TailNode.previousPtr.nextPtr = null
             this.TailNode = this.TailNode.previousPtr
             this._length--
+            return this
         } else {
             if (position < this.size() / 2) {
                 this.itr((index, p) => {
                     if (index === position) {
-                        // const pForward = p.previousPtr
-                        // const pNext = p.nextPtr
-                        // pForward.nextPtr = pNext
-                        // pNext.previousPtr = pForward
                         p.escape()
                         this._length--
                         return -1
                     }
                 })
+                return this
             } else {
                 this.reverse_itr((index, p) => {
                     if (index === position) {
-                        // const pForward = p.previousPtr
-                        // const pNext = p.nextPtr
-                        // pForward.nextPtr = pNext
-                        // pNext.previousPtr = pForward
                         p.escape()
                         this._length--
                         return -1
                     }
                 })
+                return this
             }
         }
     }
@@ -875,8 +900,13 @@ class list {
     }
     // quick sorting, may be unstable
     sort(cmpFunc = defaultMinus) {
+        if (isNullPtr(this.HeadNode) || this.size() < 2) {
+            __verbose('[list.sort] empty or too short list')
+            return this
+        }
         // to long, using array sorting
-        if (this.size() > 5000) {
+        // stack size: IE11 / CHROME = 1/2.238853729645168
+        if (this.size() > 2200) {
             const arr = this.toArrayRef()
             arr.sort(cmpFunc)
             this.splice(0, this.size(), ...arr)
@@ -887,38 +917,27 @@ class list {
             return
         }
         // define partion and qsort function
-        const partion = (pHead, pLow, pHigh) => {
+        const partion = (pLow, pHigh) => {
             const pivot = pLow._data
+            //swapPM(pLow, pHigh, '_data')
             while (pLow !== pHigh) {
-                while (pLow !== pHigh && cmpFunc(pHigh._data, pivot) < 0)
-                    pHigh = pHigh.previousPtr
-                let temp = pLow._data
+                while (pLow !== pHigh && cmpFunc(pHigh._data, pivot) >= 0) pHigh = pHigh.previousPtr
                 pLow._data = pHigh._data
-                pHigh._data = temp
-                while (pLow !== pHigh && cmpFunc(pLow._data, pivot) > 0)
-                    pLow = pLow.nextPtr
-                temp = pLow._data
-                pLow._data = pHigh._data
-                pHigh._data = temp
+                while (pLow !== pHigh && cmpFunc(pLow._data, pivot) <= 0) pLow = pLow.nextPtr
+                pHigh._data = pLow._data
             }
+            pLow._data = pivot
             return pLow
         }
-        const quick_sort = (pstHead, pstLow, pstHigh) => {
-            let pstTmp = null
-            pstTmp = partion(pstHead, pstLow, pstHigh)
-            if (pstLow !== pstTmp) {
-                quick_sort(pstHead, pstLow, pstTmp.previousPtr)
-            }
-            if (pstHigh !== pstTmp) {
-                quick_sort(pstHead, pstTmp.nextPtr, pstHigh)
-            }
+        const quick_sort = (pstLow, pstHigh) => {
+            //console.log('quick_sort jumpinto', pstLow, pstHigh)
+            let pstTmp = partion(pstLow, pstHigh)
+            //console.log('quick_sort pstTmp', pstTmp)
+            pstTmp !== pstLow ? quick_sort(pstLow, pstTmp.previousPtr) : void(0)
+            pstTmp !== pstHigh ? quick_sort(pstTmp.nextPtr, pstHigh) : void (0)
         }
 
-        if (isNullPtr(this.HeadNode) || this.size() < 2) {
-            __log('[list.sort] empty or to short list')
-            return this
-        }
-        quick_sort(this.HeadNode, this.HeadNode, this.TailNode)
+        quick_sort(this.HeadNode, this.TailNode)
         return this
     }
     // equFunc: callback function, @param node->_data, return the target node data or undefined
