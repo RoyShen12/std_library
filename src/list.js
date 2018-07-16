@@ -128,6 +128,20 @@ class list {
         return new list(listR)
     }
 
+    /**
+     *  iterator from a given node
+     */
+    static itr_from(node, callback) {
+        if (!_Node.isNode(node)) return
+        let p = node
+        let index = 0
+        do {
+            if (callback(index++, p) == -1) break
+            p = p.nextPtr
+        } while (p.nextPtr)
+        return -1
+    }
+
     constructor(elem) {
         if (isNullPtr(elem)) { // empty constructor
             __verbose('empty constructor')
@@ -159,6 +173,10 @@ class list {
                 this._length = 1
             }
         }
+
+        //this[Symbol.isConcatSpreadable] = true
+
+
         // after each constructor function,
         // make a Proxy to intercept list's default [get],
         // just to make list has the behavior like Array:
@@ -199,6 +217,33 @@ class list {
             })
         }
         __verbose('[list.at] at ', rInd)
+        return res
+    }
+    // get node reference by index
+    node_at(rInd) {
+        const __size = this.size()
+        if (typeof (rInd) !== 'number' || !inRangeLR(rInd, 0, __size - 1)) {
+            __warn('[list.node_at] bad parameter 0 given: ', rInd)
+            return undefined
+        }
+        let res = undefined
+        rInd = ~~rInd
+        if (rInd < __size / 2) {
+            this.itr((index, node) => {
+                if (index === rInd) {
+                    res = node
+                    return -1
+                }
+            })
+        } else {
+            this.reverse_itr((index, node) => {
+                if (index === rInd) {
+                    res = node
+                    return -1
+                }
+            })
+        }
+        __verbose('[list.node_at] at ', rInd)
         return res
     }
     // get element copy by index
@@ -763,6 +808,39 @@ class list {
             }
         }
     }
+    sub_list(startIndex = 0, subListLength) {
+        if (this.empty()) {
+            return new list()
+        }
+        if (typeof startIndex !== 'number' || isNaN(startIndex) || !inRangeLR(startIndex, 0, this.size() - 1)) {
+            __warn('[list.sub_list] unexpected parameter 0, need for number which in range of 0 to ' + (this.size() - 1))
+            return new list()
+        }
+        startIndex = ~~startIndex
+        if (typeof subListLength !== 'number' || isNaN(subListLength) || !inRangeLR(subListLength, 1, this.size() - startIndex)) {
+            __warn('[list.sub_list] unexpected parameter 1, need for number which in range of 1 to ' + (this.size() - startIndex))
+            return new list()
+        }
+        subListLength = ~~subListLength
+        const res = new list()
+        if (startIndex < this.size() / 2) {
+            this.itr((index, node) => {
+                if (inRangeL(index, startIndex, startIndex + subListLength)) res.pushBack(node._data)
+                if (index >= startIndex + subListLength) return -1
+            })
+            return res
+        } else {
+            this.reverse_itr((index, node) => {
+                if (index === startIndex) {
+                    return list.itr_from(node, (index_clockwise, node_clockwise) => {
+                        res.pushBack(node_clockwise._data)
+                        if (index_clockwise + 1 >= subListLength) return -1
+                    })
+                }
+            })
+            return res
+        }
+    }
     /**
      * remove a segment of nodes and replace with given elements
      * @param {Number} index - index at which to start changing the list (with origin 0)
@@ -937,7 +1015,7 @@ class list {
     // quick sorting, may be unstable
     sort(cmpFunc = defaultMinus) {
         if (this.some(D => typeof D === 'object') && cmpFunc === defaultMinus) {
-            __warn('[list.sort] object element require a specified cmpFunc')
+            __warn('[list.sort] list has some object elements, which requires a specified compare function')
             return
         }
         if (isNullPtr(this.HeadNode) || this.size() < 2) {
@@ -948,7 +1026,7 @@ class list {
             __warn('[list.sort] expected a parameter 0 with a type "function"')
             return
         }
-        // define partion of qsort function
+        // define partion method of qsort
         function partion (pLow, pHigh) {
             const pivot = pLow._data
             while (pLow !== pHigh) {
@@ -1009,9 +1087,25 @@ class list {
         quick_sort(this.HeadNode, this.TailNode)
         return this
     }
+    indexOf(tElem) {
+        if (this.empty()) {
+            return -1
+        }
+        let res = -1
+        this.itr((index, node) => {
+            if (tElem === node._data) {
+                res = index
+                return -1
+            }
+        })
+        return res
+    }
     // equFunc: callback function, @param node->_data, return the target node data or undefined
     find(equFunc) {
         if (Object.prototype.toString.call(equFunc) !== '[object Function]') {
+            return undefined
+        }
+        if (this.empty()) {
             return undefined
         }
         let res = undefined
@@ -1044,6 +1138,9 @@ class list {
 
     findIndex(equFunc) {
         if (Object.prototype.toString.call(equFunc) !== '[object Function]') {
+            return -1
+        }
+        if (this.empty()) {
             return -1
         }
         let res = -1
