@@ -17,10 +17,10 @@
 // the debug flag
 // 0 - no debug    1 - normal info    2 - more info    3 - any info
 const __debug = 0
-const __verbose = (...vb) => __debug > 2 && console ? console.log(...vb) : void (0)
-const __log = (...info) => __debug > 1 && console ? console.log(...info) : void (0)
-const __warn = (...warn) => __debug > 0 && console ? console.warn(...warn) : void (0)
-const __error = (...err) => console ? console.error(...err) : void (0)
+const __verbose = __debug > 2 && console ? (...vb) => console.log(...vb) : () => { }
+const __log = __debug > 1 && console ? (...info) => console.log(...info) : () => { }
+const __warn = __debug > 0 && console ? (...warn) => console.warn(...warn) : () => { }
+const __error = console ? (...err) => console.error(...err) : () => { }
 const _isnan = (...num) => num.some(Number.isNaN(num))
 const inRange = (target, rangeS, rangeE) => target > rangeS && target < rangeE
 const inRangeL = (target, rangeS, rangeE) => target >= rangeS && target < rangeE
@@ -43,6 +43,7 @@ const swapPM = (a, b, prop) => a[prop] = -(b[prop] = (a[prop] += b[prop]) - b[pr
  */
 class _Node {
     static isNode(objToTest) {
+        __verbose('[_Node.isNode] Enter')
         return (
             objToTest instanceof _Node &&
             objToTest.hasOwnProperty('_data') &&
@@ -104,6 +105,7 @@ class list {
 
     // List.isList  just like Array.isArray
     static isList(objToTest) {
+        __verbose('[list.islist] Enter')
         return (
             objToTest instanceof list &&
             objToTest.hasOwnProperty('HeadNode') &&
@@ -117,10 +119,12 @@ class list {
             __warn('[list.fromArray] unexpected parameter 0 token, expected Array type')
             return undefined
         }
+        __verbose('[list.fromArray] Enter')
         return new list(sourceArray)
     }
     // clone list
     static clone(listR) {
+        __verbose('[list.clone] Enter')
         return new list(listR)
     }
 
@@ -180,6 +184,7 @@ class list {
                 }
             })
         }
+        __verbose('[list.at] at ', rInd)
         return res
     }
     // get element copy by index
@@ -206,6 +211,7 @@ class list {
                 }
             })
         }
+        __verbose('[list.const_at] at ', rInd)
         return res
     }
 
@@ -229,7 +235,7 @@ class list {
         }
         if (this.empty()) {
             if (couldExeed) {
-                __log('list.fill exeed.')
+                __log('[list.fill] exeed.')
                 for (let i_ = 0; i_ < end; i_++) {
                     this.pushBack(elem)
                 }
@@ -245,7 +251,7 @@ class list {
         })
         // pushing to tail
         if (end > this.size() - 1 && couldExeed) {
-            __log('fill:couldExeed, adding count: ', end - (this.size() - 1))
+            __log('[fill:couldExeed], adding count: ', end - (this.size() - 1))
             for (let _idx = 0; _idx < end - (this.size() - 1); _idx++) {
                 this.pushBack(elem)
             }
@@ -255,6 +261,7 @@ class list {
     }
 
     toArray() {
+        __verbose('[list.toArray] Enter')
         const ret = []
         this.itr((index, node) => {
             ret.push(deepCopy(node._data))
@@ -263,6 +270,7 @@ class list {
     }
 
     toArrayRef() {
+        __verbose('[list.toArrayRef] Enter')
         const ret = []
         this.itr((index, node) => {
             ret.push(node._data)
@@ -310,6 +318,7 @@ class list {
 
     // insert elem after index { position }, range is [0, length - 1]
     insert(elem, position) {
+        __verbose('[list.insert] Enter')
         if (typeof (position) !== 'number' || !inRangeLR(position, 0, this.size() - 1) || isNullPtr(elem)) {
             __warn('[list.insert] failed with parameter 0 NullPtr or parameter 1 missing/range error')
             return
@@ -351,6 +360,7 @@ class list {
     }
 
     popFront() {
+        __verbose('[list.popFront] Enter')
         let ans = this.HeadNode ? this.HeadNode._data : null
         if (this.HeadNode) {
             this.HeadNode.nextPtr.previousPtr = null
@@ -361,6 +371,7 @@ class list {
     }
 
     popBack() {
+        __verbose('[list.popBack] Enter')
         let ans = this.TailNode ? this.TailNode._data : null
         if (this.TailNode) {
             this.TailNode.previousPtr.nextPtr = null
@@ -371,22 +382,27 @@ class list {
     }
 
     get begin() {
+        __verbose('[list.begin(getter)] Enter')
         return this.HeadNode._data
     }
 
     get end() {
+        __verbose('[list.end(getter)] Enter')
         return this.TailNode._data
     }
 
     get const_begin() {
+        __verbose('[list.const_begin(getter)] Enter')
         return deepCopy(this.HeadNode._data)
     }
 
     get const_end() {
+        __verbose('[list.const_end(getter)] Enter')
         return deepCopy(this.TailNode._data)
     }
     // creates a slice of list with n elements dropped from the beginning
     drop(n = 1) {
+        __verbose('[list.drop] Enter')
         if (n < 1) {
             return new list()
         }
@@ -398,6 +414,7 @@ class list {
     }
     // creates a slice of list with n elements dropped from the end
     dropRight(n = 1) {
+        __verbose('[list.dropRight] Enter')
         if (n < 1) {
             return new list()
         }
@@ -475,10 +492,12 @@ class list {
     }
 
     get length() {
+        __verbose('[list.length(getter)] Enter')
         return this.size()
     }
     // array of data reference
     get data() {
+        __verbose('[list.data(getter)] Enter')
         let data = []
         this.itr((index, node) => {
             data.push(node._data)
@@ -487,6 +506,7 @@ class list {
     }
     // array of reversed data reference
     get reverse_data() {
+        __verbose('[list.reverse_data(getter)] Enter')
         let data = []
         this.reverse_itr((index, node) => {
             data.push(node._data)
@@ -495,6 +515,7 @@ class list {
     }
     // array of data copy
     get const_data() {
+        __verbose('[list.const_data(getter)] Enter')
         let data = []
         this.itr((index, node) => {
             data.push(deepCopy(node._data))
@@ -503,6 +524,7 @@ class list {
     }
     // array of reversed data copy
     get const_reverse_data() {
+        __verbose('[list.const_reverse_data(getter)] Enter')
         let data = []
         this.reverse_itr((index, node) => {
             data.push(deepCopy(node._data))
