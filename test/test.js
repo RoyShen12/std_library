@@ -9,9 +9,9 @@ const repeat = (n, func, ...args) => {
         func(...args)
     }
 }
-const indexedRepeat = (n, func) => {
+const indexedRepeat = (n, func, ...args) => {
     for (let i = 0; i < n; i++) {
-        func(i)
+        func(i, ...args)
     }
 }
 const anyArr = [-1, 0, 1, 141.215, 0.000151, {}, {
@@ -253,6 +253,17 @@ describe('class list test: ', () => {
         instA.const_at(1).a = 100
         expect(instA.at(1).a).to.not.equal(100)
         expect(instA.at(2).a).to.equal(100)
+    })
+    it('list[index]' + insertSeperator + 'returns const copies correctly', () => {
+        const list1 = new list([0, 1,2,3,4,5,6,7,8,9,10])
+        indexedRepeat(11, i => {
+            expect(list1[i]).to.equal(i)
+        })
+        expect(list[-1]).to.be.undefined
+        expect(list[11]).to.be.undefined
+        expect(list[NaN]).to.be.undefined
+        expect(list[null]).to.be.undefined
+        expect(list[Infinity]).to.be.undefined
     })
     it('list::fill(number)' + insertSeperator + 'works correctly', () => {
         const cpi = new list(instA)
