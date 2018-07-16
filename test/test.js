@@ -906,7 +906,7 @@ describe('class list test: ', () => {
         console.timeEnd('list<Number, 10^6> sort')
         splitLine()
     })
-    it('benchmark sort with 10^7 load', () => {
+    it.skip('benchmark sort with 10^7 load', () => {
         const arr1 = $RDnumberG(1000000)
         const list1 = new list(arr1)
         console.time('arr<Number, 10^7> sort')

@@ -159,6 +159,20 @@ class list {
                 this._length = 1
             }
         }
+        // after each constructor function,
+        // make a Proxy to intercept list's default [get],
+        // just to make list has the behavior like Array:
+        // const a = [1]; a[0] = 1; const b = new list(1); b[0] = 1
+        return new Proxy(this, {
+            get: function (target, key ,recv) {
+                // key is of numbers
+                if (typeof key !== 'symbol' && !isNaN(key)) {
+                    return target.at(~~key)
+                } else {
+                    return Reflect.get(target, key, recv)
+                }
+            }
+        })
     }
     // get element reference by index
     at(rInd) {
@@ -383,22 +397,22 @@ class list {
 
     get begin() {
         __verbose('[list.begin(getter)] Enter')
-        return this.HeadNode._data
+        return this.HeadNode ? this.HeadNode._data : undefined
     }
 
     get end() {
         __verbose('[list.end(getter)] Enter')
-        return this.TailNode._data
+        return this.TailNode ? this.TailNode._data : undefined
     }
 
     get const_begin() {
         __verbose('[list.const_begin(getter)] Enter')
-        return deepCopy(this.HeadNode._data)
+        return this.HeadNode ? deepCopy(this.HeadNode._data) : undefined
     }
 
     get const_end() {
         __verbose('[list.const_end(getter)] Enter')
-        return deepCopy(this.TailNode._data)
+        return this.TailNode ? deepCopy(this.TailNode._data) : undefined
     }
     // creates a slice of list with n elements dropped from the beginning
     drop(n = 1) {
