@@ -32,6 +32,16 @@ const defaultEqu = (a, b) => a === b
 const defaultLess = (a, b) => a <= b    // true  false
 const defaultMinus = (a, b) => a - b   //  <=0    >0
 const swapPM = (a, b, prop) => a[prop] = -(b[prop] = (a[prop] += b[prop]) - b[prop]) + a[prop]// faster than normal temp swap
+const swapNM = (a, b, prop) => {
+    const tmp = a[prop]
+    a[prop] = b[prop]
+    b[prop] = tmp
+}
+const swapDP = (a, b, prop) => {
+    const tmp = deepCopy(a[prop])
+    a[prop] = deepCopy(b[prop])
+    b[prop] = tmp
+}
 /**
  * - the node structure to composite a list
  * 
@@ -733,7 +743,7 @@ class list {
     // return(calculate) the size of calling list
     size() {
         let counter
-        if (__debug == 3) {
+        if (__debug > 2) {
             let node = this.HeadNode
             if (node === null) {
                 return 0
@@ -743,7 +753,7 @@ class list {
                 counter++
                 node = node.nextPtr
             }
-            __verbose('debug size: (calculated:_length)->' + counter + ':' + this._length)
+            __verbose('debug size: (calculated : _length)->' + counter + ' : ' + this._length)
             counter !== this._length ? __error('size() debug error ocurred: counter !== this._length !') : void (0)
         } else {
             counter = this._length
@@ -1223,7 +1233,7 @@ class list {
     concat(anotherListRef, position = this.size() - 1) {
         if (list.isList(anotherListRef)) {
             if (anotherListRef === this) {
-                __warn('[list.concat] self concating is not allowed, use [front_concat] or [back_concat] to instead')
+                __warn('[list.concat] intend to self concating which is not allowed, use [front_concat] or [back_concat] to instead')
                 return
             }
             if (this.empty()) {
@@ -1289,6 +1299,10 @@ class list {
 
     swap(anotherListRef) {
         if (list.isList(anotherListRef)) {
+            if (anotherListRef === this) {
+                __warn('[list.swap] intend to self swaping which is not allowed')
+                return
+            }
             const pHead = this.HeadNode
             const pTail = this.TailNode
             const pLength = this._length
@@ -1311,6 +1325,12 @@ class list {
         }
         this.itr((idx, node) => {
             needIndex ? console.log('index: ' + idx, node._data) : console.log(node._data)
+        })
+    }
+
+    consolePrintAsTable() {
+        this.itr((idx, node) => {
+            console.table(node)
         })
     }
 }
