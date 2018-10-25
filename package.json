@@ -1,0 +1,30 @@
+{
+  "name": "std_library",
+  "version": "0.0.1",
+  "description": "a JavaScript container library",
+  "main": "mocha",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "test": "mocha"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/RoyShen12/std_library.git"
+  },
+  "keywords": [
+    "container"
+  ],
+  "author": "Roy Shen",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/RoyShen12/std_library/issues"
+  },
+  "homepage": "https://github.com/RoyShen12/std_library#readme",
+  "devDependencies": {
+    "chai": "^4.2.0",
+    "mocha": "^5.2.0",
+    "sinon": "^7.0.0"
+  }
+}
