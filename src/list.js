@@ -352,7 +352,7 @@
         pushFront(elem) {
             if (isNullPtr(elem)) {
                 __warn('[list.pushFront] cannot push parameter 0 which is null or undefined')
-                return
+                throw new TypeError('cannot push parameter 0 which is null or undefined')
             }
             const node = new _Node(elem, null, this.HeadNode)
             if (this.HeadNode) {
@@ -371,7 +371,7 @@
         pushBack(elem) {
             if (isNullPtr(elem)) {
                 __warn('[list.pushBack] cannot push parameter 0 which is null or undefined')
-                return
+                throw new TypeError('cannot push parameter 0 which is null or undefined')
             }
             const node = new _Node(elem, this.TailNode, null)
             if (this.TailNode) {
@@ -433,7 +433,10 @@
         popFront() {
             __verbose('[list.popFront] Enter')
             let ans = this.HeadNode ? this.HeadNode._data : null
-            if (this.HeadNode) {
+            if (this.HeadNode === this.TailNode && !isNullPtr(this.HeadNode)) {
+                this.HeadNode = this.TailNode = null
+                this._length--
+            } else if (this.HeadNode) {
                 this.HeadNode.nextPtr.previousPtr = null
                 this.HeadNode = this.HeadNode.nextPtr
                 this._length--
@@ -444,7 +447,10 @@
         popBack() {
             __verbose('[list.popBack] Enter')
             let ans = this.TailNode ? this.TailNode._data : null
-            if (this.TailNode) {
+            if (this.HeadNode === this.TailNode && !isNullPtr(this.HeadNode)) {
+                this.HeadNode = this.TailNode = null
+                this._length--
+            } else if (this.TailNode) {
                 this.TailNode.previousPtr.nextPtr = null
                 this.TailNode = this.TailNode.previousPtr
                 this._length--

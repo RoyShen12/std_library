@@ -336,7 +336,9 @@ describe('class list test: ', () => {
     })
     it('list::pushFront all func' + insertSeperator + 'works correctly', () => {
         emptyInst.clear()
-        emptyInst.pushFront()
+        try {
+            emptyInst.pushFront()
+        } catch (error) { }
         expect(emptyInst.data).to.deep.equal([])
         const testNA = []
         let i = 0
@@ -357,7 +359,9 @@ describe('class list test: ', () => {
     })
     it('list::pushBack all func' + insertSeperator + 'works correctly', () => {
         emptyInst.clear()
-        emptyInst.pushBack()
+        try {
+            emptyInst.pushBack()
+        } catch (error) { }
         expect(emptyInst.data).to.deep.equal([])
         const testNA = []
         let i = 0
@@ -401,6 +405,27 @@ describe('class list test: ', () => {
         emptyInst.pushBack(1).pushBack(2).pushBack(3)
         expect(emptyInst.popBack()).to.equal(3)
         expect(emptyInst.data).to.deep.equal([1, 2])
+    })
+    it.only('list::pop*' + insertSeperator + 'works correctly', () => {
+        emptyInst.clear()
+        expect(emptyInst.size()).to.equal(0)
+        // spec pop till size = 0
+        emptyInst.pushBack(1).pushBack(2).pushBack(3)
+        // emptyInst.consolePrint(true)
+        emptyInst.popBack()
+        emptyInst.popBack()
+        emptyInst.popFront()
+        expect(emptyInst.size()).to.equal(0)
+        emptyInst.pushBack(1).pushBack(2).pushBack(3)
+        emptyInst.popFront()
+        emptyInst.popFront()
+        emptyInst.popBack()
+        expect(emptyInst.size()).to.equal(0)
+        // spec pop while size = 0
+        emptyInst.popFront()
+        expect(emptyInst.size()).to.equal(0)
+        emptyInst.popBack()
+        expect(emptyInst.size()).to.equal(0)
     })
     it('list::drop all func' + insertSeperator + 'works correctly', () => {
         emptyInst.clear()
