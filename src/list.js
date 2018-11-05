@@ -12,38 +12,11 @@
 // specific language governing permissions and limitations under the License.
 
 (function (glb) {
+    const util = require('./util')
 
     // I don't like the foolish and bumptious eslint, so
     /* eslint-disable */
 
-    // the debug flag
-    // 0 - no debug    1 - normal info    2 - more info    3 - any info
-    const __debug = 0
-    const __verbose = __debug > 2 && console ? (...vb) => console.log(...vb) : () => { }
-    const __log = __debug > 1 && console ? (...info) => console.log(...info) : () => { }
-    const __warn = __debug > 0 && console ? (...warn) => console.warn(...warn) : () => { }
-    const __error = console ? (...err) => console.error(...err) : () => { }
-    const _isnan = (...num) => num.some(Number.isNaN(num))
-    const inRange = (target, rangeS, rangeE) => target > rangeS && target < rangeE
-    const inRangeL = (target, rangeS, rangeE) => target >= rangeS && target < rangeE
-    const inRangeR = (target, rangeS, rangeE) => target > rangeS && target <= rangeE
-    const inRangeLR = (target, rangeS, rangeE) => target >= rangeS && target <= rangeE
-    const deepCopy = source => JSON.parse(JSON.stringify(source))
-    const isNullPtr = ptr => ptr === undefined || ptr === null
-    const defaultEqu = (a, b) => a === b
-    const defaultLess = (a, b) => a <= b    // true  false
-    const defaultMinus = (a, b) => a - b   //  <=0    >0
-    const swapPM = (a, b, prop) => a[prop] = -(b[prop] = (a[prop] += b[prop]) - b[prop]) + a[prop]// faster than normal temp swap
-    const swapNM = (a, b, prop) => {
-        const tmp = a[prop]
-        a[prop] = b[prop]
-        b[prop] = tmp
-    }
-    const swapDP = (a, b, prop) => {
-        const tmp = deepCopy(a[prop])
-        a[prop] = deepCopy(b[prop])
-        b[prop] = tmp
-    }
     /**
      * - the node structure to composite a list
      * 
@@ -55,7 +28,7 @@
      */
     class _Node {
         static isNode(objToTest) {
-            __verbose('[_Node.isNode] Enter')
+            util.__verbose('[_Node.isNode] Enter')
             return (
                 objToTest instanceof _Node &&
                 objToTest.hasOwnProperty('_data') &&
@@ -67,19 +40,19 @@
             this._data = elem
             this.previousPtr = frontElem
             this.nextPtr = nextElem
-            __verbose('new _Node created')
+            util.__verbose('new _Node created')
         }
         // escape this node, illegal while has no pre or next node
         escape() {
             if (!_Node.isNode(this.previousPtr) || !_Node.isNode(this.nextPtr)) {
-                __warn('[_Node.escape] bad call, expect previousPtr and nextPtr exists')
+                util.__warn('[_Node.escape] bad call, expect previousPtr and nextPtr exists')
                 return
             }
             this.previousPtr.nextPtr = this.nextPtr
             this.nextPtr.previousPtr = this.previousPtr
             this.previousPtr = null
             this.nextPtr = null
-            __verbose('_Node escaped')
+            util.__verbose('_Node escaped')
             return this._data
         }
         // just like a deconstructor
@@ -87,7 +60,7 @@
             this._data = null
             this.previousPtr = null
             this.nextPtr = null
-            __verbose('_Node destoryed')
+            util.__verbose('_Node destoryed')
         }
     }
     /**
@@ -96,7 +69,7 @@
      * - list structure is like this:
      * 
      *  ( null )
-     *      Î›
+     *      Î
      *      |
      * [previousPtr]
      *      |
@@ -117,7 +90,7 @@
 
         // List.isList  just like Array.isArray
         static isList(objToTest) {
-            __verbose('[list.islist] Enter')
+            util.__verbose('[list.islist] Enter')
             return (
                 objToTest instanceof list &&
                 objToTest.hasOwnProperty('HeadNode') &&
@@ -128,15 +101,15 @@
         // returns a new list by a given array
         static fromArray(sourceArray) {
             if (!Array.isArray(sourceArray)) {
-                __warn('[list.fromArray] unexpected parameter 0 token, expected Array type')
+                util.__warn('[list.fromArray] unexpected parameter 0 token, expected Array type')
                 return undefined
             }
-            __verbose('[list.fromArray] Enter')
+            util.__verbose('[list.fromArray] Enter')
             return new list(sourceArray)
         }
         // clone list
         static clone(listR) {
-            __verbose('[list.clone] Enter')
+            util.__verbose('[list.clone] Enter')
             return new list(listR)
         }
 
@@ -155,22 +128,22 @@
         }
 
         constructor(elem) {
-            if (isNullPtr(elem)) { // empty constructor
-                __verbose('empty constructor')
+            if (util.isNullPtr(elem)) { // empty constructor
+                util.__verbose('empty constructor')
                 this.HeadNode = null
                 this.TailNode = null
                 this._length = 0
             } else {
                 if (list.isList(elem)) { // copy constructor
-                    __verbose('copy constructor')
+                    util.__verbose('copy constructor')
                     this.HeadNode = null
                     this.TailNode = null
                     this._length = 0
                     elem.itr((index, node) => {
-                        this.pushBack(deepCopy(node._data))
+                        this.pushBack(util.recursiveDeepCopy(node._data))
                     })
                 } else if (Array.isArray(elem)) { // copy from array constructor
-                    __verbose('array copy constructor')
+                    util.__verbose('array copy constructor')
                     this.HeadNode = null
                     this.TailNode = null
                     this._length = 0
@@ -178,7 +151,7 @@
                         this.pushBack(e)
                     }
                 } else { // single element pushing constructor
-                    __verbose('default constructor')
+                    util.__verbose('default constructor')
                     const node = new _Node(elem, null, null)
                     this.HeadNode = node
                     this.TailNode = node
@@ -197,7 +170,7 @@
                 get: function (target, key, recv) {
                     // key is of numbers
                     if (typeof key !== 'symbol' && !isNaN(key)) {
-                        return target.at(~~key)
+                        return target.at(Math.round(key))
                     } else {
                         return Reflect.get(target, key, recv)
                     }
@@ -207,12 +180,12 @@
         // get element reference by index
         at(rInd) {
             const __size = this.size()
-            if (typeof (rInd) !== 'number' || !inRangeLR(rInd, 0, __size - 1)) {
-                __warn('[list.at] bad parameter 0 given: ', rInd)
-                return undefined
+            if (typeof (rInd) !== 'number' || !util.inRangeLR(rInd, 0, __size - 1)) {
+                util.__warn('[list.at] bad parameter 0 given: ', rInd)
+                throw new RangeError('bad parameter 0 given: ' + rInd)
             }
             let res = undefined
-            rInd = ~~rInd
+            rInd = Math.round(rInd)
             if (rInd < __size / 2) {
                 this.itr((index, node) => {
                     if (index === rInd) {
@@ -228,18 +201,18 @@
                     }
                 })
             }
-            __verbose('[list.at] at ', rInd)
+            util.__verbose('[list.at] at ', rInd)
             return res
         }
         // get node reference by index
         node_at(rInd) {
             const __size = this.size()
-            if (typeof (rInd) !== 'number' || !inRangeLR(rInd, 0, __size - 1)) {
-                __warn('[list.node_at] bad parameter 0 given: ', rInd)
-                return undefined
+            if (typeof (rInd) !== 'number' || !util.inRangeLR(rInd, 0, __size - 1)) {
+                util.__warn('[list.node_at] bad parameter 0 given: ', rInd)
+                throw new RangeError('bad parameter 0 given')
             }
             let res = undefined
-            rInd = ~~rInd
+            rInd = Math.round(rInd)
             if (rInd < __size / 2) {
                 this.itr((index, node) => {
                     if (index === rInd) {
@@ -255,34 +228,34 @@
                     }
                 })
             }
-            __verbose('[list.node_at] at ', rInd)
+            util.__verbose('[list.node_at] at ', rInd)
             return res
         }
         // get element copy by index
         const_at(rInd) {
             const __size = this.size()
-            if (typeof (rInd) !== 'number' || !inRangeLR(rInd, 0, __size - 1)) {
-                __warn('[list.const_at] bad parameter 0 given: ', rInd)
-                return undefined
+            if (typeof (rInd) !== 'number' || !util.inRangeLR(rInd, 0, __size - 1)) {
+                util.__warn('[list.const_at] bad parameter 0 given: ', rInd)
+                throw new RangeError('bad parameter 0 given')
             }
             let res = undefined
-            rInd = ~~rInd
+            rInd = Math.round(rInd)
             if (rInd < __size / 2) {
                 this.itr((index, node) => {
                     if (index === rInd) {
-                        res = deepCopy(node._data)
+                        res = util.recursiveDeepCopy(node._data)
                         return -1
                     }
                 })
             } else {
                 this.reverse_itr((index, node) => {
                     if (index === rInd) {
-                        res = deepCopy(node._data)
+                        res = util.recursiveDeepCopy(node._data)
                         return -1
                     }
                 })
             }
-            __verbose('[list.const_at] at ', rInd)
+            util.__verbose('[list.const_at] at ', rInd)
             return res
         }
 
@@ -291,57 +264,57 @@
         // return this
         fill(elem, start = 0, end = this.size() - 1, couldExeed = false) {
             // check elem
-            if (isNullPtr(elem)) {
-                __warn('[list.fill] cannot fill with the given parameter 0 as NullPtr')
-                return this
+            if (util.isNullPtr(elem)) {
+                util.__warn('[list.fill] cannot fill with the given parameter 0 as NullPtr')
+                throw new TypeError('cannot fill with the given parameter 0 as NullPtr')
             }
             // check start end
             if (typeof start !== 'number' || start < 0 || (!this.empty() && start > this.size() - 1) || (this.empty() && start !== 0)) {
-                __warn('[list.fill] cannot fill with bad parameter 1 : not a number or range error')
-                return this
+                util.__warn('[list.fill] cannot fill with bad parameter 1 : not a number or range error')
+                throw new RangeError('cannot fill with bad parameter 1 : not a number or range error')
             }
             if (typeof end !== 'number' || end < 0 || end < start) {
-                __warn('[list.fill] cannot fill with bad parameter 2 : not a number or range error')
-                return this
+                util.__warn('[list.fill] cannot fill with bad parameter 2 : not a number or range error')
+                throw new RangeError('cannot fill with bad parameter 2 : not a number or range error')
             }
             if (this.empty()) {
                 if (couldExeed) {
-                    __log('[list.fill] exeed.')
+                    util.__log('[list.fill] exeed.')
                     for (let i_ = 0; i_ < end; i_++) {
                         this.pushBack(elem)
                     }
                     return this
                 } else {
-                    __warn('[list.fill] can only fill an empty list with parameter 3 as true')
-                    return this
+                    util.__warn('[list.fill] can only fill an empty list with parameter 3 as true')
+                    throw TypeError('can only fill an empty list when parameter 3 {couldExeed} is true')
                 }
             }
             this.itr((index, node) => {
-                if (inRangeLR(index, start, end))
+                if (util.inRangeLR(index, start, end))
                     node._data = elem
             })
             // pushing to tail
             if (end > this.size() - 1 && couldExeed) {
-                __log('[fill:couldExeed], adding count: ', end - (this.size() - 1))
+                util.__log('[fill:couldExeed], adding count: ', end - (this.size() - 1))
                 for (let _idx = 0; _idx < end - (this.size() - 1); _idx++) {
                     this.pushBack(elem)
                 }
             }
-            couldExeed ? __log('after fill _length is ', this._length) : void (0)
+            couldExeed ? util.__log('after fill _length is ', this._length) : void (0)
             return this
         }
 
         toArray() {
-            __verbose('[list.toArray] Enter')
+            util.__verbose('[list.toArray] Enter')
             const ret = []
             this.itr((index, node) => {
-                ret.push(deepCopy(node._data))
+                ret.push(util.recursiveDeepCopy(node._data))
             })
             return ret
         }
 
         toArrayRef() {
-            __verbose('[list.toArrayRef] Enter')
+            util.__verbose('[list.toArrayRef] Enter')
             const ret = []
             this.itr((index, node) => {
                 ret.push(node._data)
@@ -350,8 +323,8 @@
         }
 
         pushFront(elem) {
-            if (isNullPtr(elem)) {
-                __warn('[list.pushFront] cannot push parameter 0 which is null or undefined')
+            if (util.isNullPtr(elem)) {
+                util.__warn('[list.pushFront] cannot push parameter 0 which is null or undefined')
                 throw new TypeError('cannot push parameter 0 which is null or undefined')
             }
             const node = new _Node(elem, null, this.HeadNode)
@@ -364,13 +337,13 @@
                 this.TailNode = node
             }
             this._length++
-            __log('push front: a new node: ')
+            util.__log('push front: a new node: ')
             return this
         }
 
         pushBack(elem) {
-            if (isNullPtr(elem)) {
-                __warn('[list.pushBack] cannot push parameter 0 which is null or undefined')
+            if (util.isNullPtr(elem)) {
+                util.__warn('[list.pushBack] cannot push parameter 0 which is null or undefined')
                 throw new TypeError('cannot push parameter 0 which is null or undefined')
             }
             const node = new _Node(elem, this.TailNode, null)
@@ -383,18 +356,18 @@
                 this.HeadNode = node
             }
             this._length++
-            __log('push back: a new node:')
+            util.__log('push back: a new node:')
             return this
         }
 
         // insert elem after index { position }, range is [0, length - 1]
         insert(elem, position) {
-            __verbose('[list.insert] Enter')
-            if (typeof (position) !== 'number' || !inRangeLR(position, 0, this.size() - 1) || isNullPtr(elem)) {
-                __warn('[list.insert] failed with parameter 0 NullPtr or parameter 1 missing/range error')
-                return
+            util.__verbose('[list.insert] Enter')
+            if (typeof (position) !== 'number' || !util.inRangeLR(position, 0, this.size() - 1) || util.isNullPtr(elem)) {
+                util.__warn('[list.insert] failed with parameter 0 NullPtr or parameter 1 missing/range error')
+                throw new TypeError('failed with parameter 0 NullPtr or parameter 1 missing/range error')
             }
-            position = ~~position
+            position = Math.round(position)
             if (position === 0) {
                 const node = new _Node(elem, this.HeadNode, this.HeadNode.nextPtr)
                 this.HeadNode.nextPtr.previousPtr = node
@@ -431,9 +404,9 @@
         }
 
         popFront() {
-            __verbose('[list.popFront] Enter')
+            util.__verbose('[list.popFront] Enter')
             let ans = this.HeadNode ? this.HeadNode._data : null
-            if (this.HeadNode === this.TailNode && !isNullPtr(this.HeadNode)) {
+            if (this.HeadNode === this.TailNode && !util.isNullPtr(this.HeadNode)) {
                 this.HeadNode = this.TailNode = null
                 this._length--
             } else if (this.HeadNode) {
@@ -445,9 +418,9 @@
         }
 
         popBack() {
-            __verbose('[list.popBack] Enter')
+            util.__verbose('[list.popBack] Enter')
             let ans = this.TailNode ? this.TailNode._data : null
-            if (this.HeadNode === this.TailNode && !isNullPtr(this.HeadNode)) {
+            if (this.HeadNode === this.TailNode && !util.isNullPtr(this.HeadNode)) {
                 this.HeadNode = this.TailNode = null
                 this._length--
             } else if (this.TailNode) {
@@ -459,44 +432,44 @@
         }
 
         get begin() {
-            __verbose('[list.begin(getter)] Enter')
+            util.__verbose('[list.begin(getter)] Enter')
             return this.HeadNode ? this.HeadNode._data : undefined
         }
 
         get end() {
-            __verbose('[list.end(getter)] Enter')
+            util.__verbose('[list.end(getter)] Enter')
             return this.TailNode ? this.TailNode._data : undefined
         }
 
         get const_begin() {
-            __verbose('[list.const_begin(getter)] Enter')
-            return this.HeadNode ? deepCopy(this.HeadNode._data) : undefined
+            util.__verbose('[list.const_begin(getter)] Enter')
+            return this.HeadNode ? util.recursiveDeepCopy(this.HeadNode._data) : undefined
         }
 
         get const_end() {
-            __verbose('[list.const_end(getter)] Enter')
-            return this.TailNode ? deepCopy(this.TailNode._data) : undefined
+            util.__verbose('[list.const_end(getter)] Enter')
+            return this.TailNode ? util.recursiveDeepCopy(this.TailNode._data) : undefined
         }
         // creates a slice of list with n elements dropped from the beginning
         drop(n = 1) {
-            __verbose('[list.drop] Enter')
+            util.__verbose('[list.drop] Enter')
             if (n < 1) {
                 return new list()
             }
             n > this.size() ? n = this.size() : void (0)
-            n = ~~n
+            n = Math.round(n)
             const lp = list.clone(this)
             lp.splice(0, n)
             return lp
         }
         // creates a slice of list with n elements dropped from the end
         dropRight(n = 1) {
-            __verbose('[list.dropRight] Enter')
+            util.__verbose('[list.dropRight] Enter')
             if (n < 1) {
                 return new list()
             }
             n > this.size() ? n = this.size() : void (0)
-            n = ~~n
+            n = Math.round(n)
             const lp = list.clone(this)
             lp.reverse().splice(0, n)
             return lp.reverse()
@@ -507,11 +480,11 @@
          */
         itr(callback) {
             if (Object.prototype.toString.call(callback) !== '[object Function]') {
-                __warn('[list.itr] parameter 0 need to be with a type "function"')
-                return
+                util.__warn('[list.itr] parameter 0 need to be with a type "function"')
+                throw new TypeError('parameter 0 need to be with a type "function"')
             }
             if (this.empty()) {
-                __log('[list.itr] returned with empty list')
+                util.__log('[list.itr] returned with empty list')
                 return
             }
             let p = null
@@ -527,11 +500,11 @@
          */
         reverse_itr(callback) {
             if (Object.prototype.toString.call(callback) !== '[object Function]') {
-                __warn('[list.reverse_itr] parameter 0 need to be with a type "function"')
-                return
+                util.__warn('[list.reverse_itr] parameter 0 need to be with a type "function"')
+                throw new TypeError('parameter 0 need to be with a type "function"')
             }
             if (this.empty()) {
-                __log('[list.reverse_itr] returned with empty list')
+                util.__log('[list.reverse_itr] returned with empty list')
                 return
             }
             let p = null
@@ -569,12 +542,12 @@
         }
 
         get length() {
-            __verbose('[list.length(getter)] Enter')
+            util.__verbose('[list.length(getter)] Enter')
             return this.size()
         }
         // array of data reference
         get data() {
-            __verbose('[list.data(getter)] Enter')
+            util.__verbose('[list.data(getter)] Enter')
             let data = []
             this.itr((index, node) => {
                 data.push(node._data)
@@ -583,7 +556,7 @@
         }
         // array of reversed data reference
         get reverse_data() {
-            __verbose('[list.reverse_data(getter)] Enter')
+            util.__verbose('[list.reverse_data(getter)] Enter')
             let data = []
             this.reverse_itr((index, node) => {
                 data.push(node._data)
@@ -592,19 +565,19 @@
         }
         // array of data copy
         get const_data() {
-            __verbose('[list.const_data(getter)] Enter')
+            util.__verbose('[list.const_data(getter)] Enter')
             let data = []
             this.itr((index, node) => {
-                data.push(deepCopy(node._data))
+                data.push(util.recursiveDeepCopy(node._data))
             })
             return data
         }
         // array of reversed data copy
         get const_reverse_data() {
-            __verbose('[list.const_reverse_data(getter)] Enter')
+            util.__verbose('[list.const_reverse_data(getter)] Enter')
             let data = []
             this.reverse_itr((index, node) => {
-                data.push(deepCopy(node._data))
+                data.push(util.recursiveDeepCopy(node._data))
             })
             return data
         }
@@ -615,12 +588,12 @@
          */
         forEach(callback, start = 0, end = this.size() - 1) {
             if (Object.prototype.toString.call(callback) !== '[object Function]') {
-                __warn('[list.forEach] expected a parameter 0 with a type "function"')
-                return
+                util.__warn('[list.forEach] expected a parameter 0 with a type "function"')
+                throw new TypeError('expected a parameter 0 with a type "function"')
             }
             if (!this.empty()) {
                 this.itr((index, node) => {
-                    if (inRangeLR(index, start, end))
+                    if (util.inRangeLR(index, start, end))
                         callback(node._data, index, this)
                 })
             }
@@ -633,16 +606,16 @@
          */
         forEachTween(callback, start = 0, end = this.size() - 1) {
             if (this.size() < 2) {
-                __verbose('[list.forEachTween] exit with no enough elements')
+                util.__verbose('[list.forEachTween] exit with no enough elements')
                 return
             }
             if (Object.prototype.toString.call(callback) !== '[object Function]') {
-                __warn('[list.forEachTween] expected a parameter 0 with a type "function"')
-                return
+                util.__warn('[list.forEachTween] expected a parameter 0 with a type "function"')
+                throw new TypeError('expected a parameter 0 with a type "function"')
             }
             this.itr((index, node) => {
                 if (index === this.size() - 1) return -1
-                if (inRangeLR(index, start, end))
+                if (util.inRangeLR(index, start, end))
                     callback(node._data, node.nextPtr._data, index, index + 1, this)
             })
         }
@@ -650,11 +623,11 @@
         // only returns true while all elements pass through the callback function
         every(callback) {
             if (Object.prototype.toString.call(callback) !== '[object Function]') {
-                __warn('[list.every] expected a parameter 0 with a type "function"')
-                return
+                util.__warn('[list.every] expected a parameter 0 with a type "function"')
+                throw new TypeError('expected a parameter 0 with a type "function"')
             }
             if (this.empty()) {
-                __log('[list.every] returned true but only because of empty list')
+                util.__log('[list.every] returned true but only because of empty list')
                 return true
             }
             let ans = true
@@ -668,11 +641,11 @@
         // returns true while at least one element pass through the callback function
         some(callback) {
             if (Object.prototype.toString.call(callback) !== '[object Function]') {
-                __warn('[list.some] expected a parameter 0 with a type "function"')
-                return
+                util.__warn('[list.some] expected a parameter 0 with a type "function"')
+                throw new TypeError('expected a parameter 0 with a type "function"')
             }
             if (this.empty()) {
-                __log('[list.some] returned true but only because of empty list')
+                util.__log('[list.some] returned true but only because of empty list')
                 return true
             }
             let ans = false
@@ -687,8 +660,8 @@
         // with the results of calling callback function on every element in the calling list.
         map(callback) {
             if (Object.prototype.toString.call(callback) !== '[object Function]') {
-                __warn('[list.map] expected a parameter 0 with a type "function"')
-                return
+                util.__warn('[list.map] expected a parameter 0 with a type "function"')
+                throw new TypeError('expected a parameter 0 with a type "function"')
             }
             const lp = new list()
             if (!this.empty()) {
@@ -701,8 +674,8 @@
         // The filter method creates a new list with elements pass the callback fucntion
         filter(callback) {
             if (Object.prototype.toString.call(callback) !== '[object Function]') {
-                __warn('[list.filter] expected a parameter 0 with a type "function"')
-                return
+                util.__warn('[list.filter] expected a parameter 0 with a type "function"')
+                throw new TypeError('expected a parameter 0 with a type "function"')
             }
             const lp = new list()
             if (!this.empty()) {
@@ -734,7 +707,7 @@
         // The compact methods creates a list with all falsey values removed
         // The values false, null, 0, "", undefined, and NaN are falsey
         compact() {
-            return list.clone(this).filter(data => !(data === false || isNullPtr(data) || data === '' || Number.isNaN(data) || data === 0))
+            return list.clone(this).filter(data => !(data === false || util.isNullPtr(data) || data === '' || Number.isNaN(data) || data === 0))
         }
         // Creates a duplicate-free version of a list
         // in which only the first occurrence of each element is kept
@@ -751,7 +724,7 @@
         // return(calculate) the size of calling list
         size() {
             let counter
-            if (__debug > 2) {
+            if (util.__debug > 2) {
                 let node = this.HeadNode
                 if (node === null) {
                     return 0
@@ -761,8 +734,8 @@
                     counter++
                     node = node.nextPtr
                 }
-                __verbose('debug size: (calculated : _length)->' + counter + ' : ' + this._length)
-                counter !== this._length ? __error('size() debug error ocurred: counter !== this._length !') : void (0)
+                util.__verbose('debug size: (calculated : _length)->' + counter + ' : ' + this._length)
+                counter !== this._length ? util.__error('size() debug error ocurred: counter !== this._length !') : void (0)
             } else {
                 counter = this._length
             }
@@ -775,17 +748,17 @@
         // remove a node by specifying it's index
         remove(position) {
             if (this.empty()) {
-                __verbose('[list.remove] on a empty list')
+                util.__verbose('[list.remove] on a empty list')
                 return this
             }
             if (typeof (position) !== 'number' || Number.isNaN(position)) {
-                __warn('[list.remove] failed with parameter 0 of NullPtr/errorType/NaN')
-                return
+                util.__warn('[list.remove] failed with parameter 0 of NullPtr/errorType/NaN')
+                throw new TypeError('failed with parameter 0 of NullPtr/errorType/NaN')
             }
-            position = ~~position
+            position = Math.round(position)
             if (position < 0 || position >= this.size()) {
-                __warn('[list.remove] position range exceed')
-                return
+                util.__warn('[list.remove] position range exceed')
+                throw new RangeError('position range exceed')
             }
             if (position === 0) {
                 if (this.size() === 1) {
@@ -830,20 +803,20 @@
             if (this.empty()) {
                 return new list()
             }
-            if (typeof startIndex !== 'number' || isNaN(startIndex) || !inRangeLR(startIndex, 0, this.size() - 1)) {
-                __warn('[list.sub_list] unexpected parameter 0, need for number which in range of 0 to ' + (this.size() - 1))
+            if (typeof startIndex !== 'number' || isNaN(startIndex) || !util.inRangeLR(startIndex, 0, this.size() - 1)) {
+                util.__warn('[list.sub_list] unexpected parameter 0, need for number which in range of 0 to ' + (this.size() - 1))
                 return new list()
             }
-            startIndex = ~~startIndex
-            if (typeof subListLength !== 'number' || isNaN(subListLength) || !inRangeLR(subListLength, 1, this.size() - startIndex)) {
-                __warn('[list.sub_list] unexpected parameter 1, need for number which in range of 1 to ' + (this.size() - startIndex))
+            startIndex = Math.round(startIndex)
+            if (typeof subListLength !== 'number' || isNaN(subListLength) || !util.inRangeLR(subListLength, 1, this.size() - startIndex)) {
+                util.__warn('[list.sub_list] unexpected parameter 1, need for number which in range of 1 to ' + (this.size() - startIndex))
                 return new list()
             }
-            subListLength = ~~subListLength
+            subListLength = Math.round(subListLength)
             const res = new list()
             if (startIndex < this.size() / 2) {
                 this.itr((index, node) => {
-                    if (inRangeL(index, startIndex, startIndex + subListLength)) res.pushBack(node._data)
+                    if (util.inRangeL(index, startIndex, startIndex + subListLength)) res.pushBack(node._data)
                     if (index >= startIndex + subListLength) return -1
                 })
                 return res
@@ -872,14 +845,14 @@
                 return []
             }
             // check index
-            if (typeof (index) !== 'number' || !inRangeLR(index, 0, this.size() - 1)) {
-                __warn('[list.splice] unexpected parameter 0, need for number which in range 0 to ' + (this.size() - 1))
+            if (typeof (index) !== 'number' || !util.inRangeLR(index, 0, this.size() - 1)) {
+                util.__warn('[list.splice] unexpected parameter 0, need for number which in range 0 to ' + (this.size() - 1))
                 return []
             }
             // check deleteCount
             const maxDelAmount = this.size() - index
-            if (typeof (deleteCount) !== 'number' || !inRangeLR(deleteCount, 1, maxDelAmount)) {
-                __warn('[list.splice] unexpected parameter 1, need for number which in range 1 to ' + maxDelAmount)
+            if (typeof (deleteCount) !== 'number' || !util.inRangeLR(deleteCount, 1, maxDelAmount)) {
+                util.__warn('[list.splice] unexpected parameter 1, need for number which in range 1 to ' + maxDelAmount)
                 return []
             }
             let Delnodes = {
@@ -887,8 +860,8 @@
                 tail: null,
                 isApproachEnd: false
             }
-            index = ~~index
-            deleteCount = ~~deleteCount
+            index = parseInt(index)
+            deleteCount = parseInt(deleteCount)
             // remove elements
 
             if (index < this.size() / 2) {
@@ -915,7 +888,7 @@
                 })
             }
 
-            __verbose(index, deleteCount, Delnodes)
+            util.__verbose(index, deleteCount, Delnodes)
 
             if (index === 0 && Delnodes.isApproachEnd) {
                 const arr = this.toArray()
@@ -932,7 +905,7 @@
                     let p = Delnodes.head
 
                     while (p !== Delnodes.tail) {
-                        arr.push(deepCopy(p._data))
+                        arr.push(util.recursiveDeepCopy(p._data))
                         try {
                             p.previousPtr.nextPtr = null
                             p.previousPtr = null
@@ -941,7 +914,7 @@
                     }
                 }
 
-                arr.push(deepCopy(Delnodes.tail._data))
+                arr.push(util.recursiveDeepCopy(Delnodes.tail._data))
 
                 Delnodes.tail.nextPtr.previousPtr = null
                 this.HeadNode = Delnodes.tail.nextPtr
@@ -958,7 +931,7 @@
                     let p = Delnodes.tail
 
                     while (p !== Delnodes.head) {
-                        arr.push(deepCopy(p._data))
+                        arr.push(util.recursiveDeepCopy(p._data))
                         try {
                             p.nextPtr.previousPtr = null
                             p.nextPtr = null
@@ -967,7 +940,7 @@
                     }
                 }
 
-                arr.push(deepCopy(Delnodes.head._data))
+                arr.push(util.recursiveDeepCopy(Delnodes.head._data))
 
                 Delnodes.head.previousPtr.nextPtr = null
                 this.TailNode = Delnodes.head.previousPtr
@@ -983,7 +956,7 @@
                     let p = Delnodes.head
 
                     while (p !== Delnodes.tail) {
-                        arr.push(deepCopy(p._data))
+                        arr.push(util.recursiveDeepCopy(p._data))
                         try {
                             if (p !== Delnodes.head) {
                                 p.previousPtr.nextPtr = null
@@ -993,7 +966,7 @@
                         p = p.nextPtr
                     }
                 }
-                arr.push(deepCopy(Delnodes.tail._data))
+                arr.push(util.recursiveDeepCopy(Delnodes.tail._data))
 
                 Delnodes.head.previousPtr.nextPtr = Delnodes.tail.nextPtr
                 Delnodes.tail.nextPtr.previousPtr = Delnodes.head.previousPtr
@@ -1017,7 +990,7 @@
             this._length = 0
             this.HeadNode = null
             this.TailNode = null
-            __log('clear over')
+            util.__log('clear over')
             return this
         }
 
@@ -1031,18 +1004,18 @@
             return this
         }
         // quick sorting, may be unstable
-        sort(cmpFunc = defaultMinus) {
-            if (this.some(D => typeof D === 'object') && cmpFunc === defaultMinus) {
-                __warn('[list.sort] list has some object elements, which requires a specified compare function')
-                return
+        sort(cmpFunc = util.defaultMinus) {
+            if (this.some(D => typeof D === 'object') && cmpFunc === util.defaultMinus) {
+                util.__warn('[list.sort] list has some object elements, which requires a specified compare function')
+                throw new TypeError('list has some object elements, which requires a specified compare function')
             }
-            if (isNullPtr(this.HeadNode) || this.size() < 2) {
-                __verbose('[list.sort] empty or too short list')
+            if (util.isNullPtr(this.HeadNode) || this.size() < 2) {
+                util.__verbose('[list.sort] empty or too short list')
                 return this
             }
             if (Object.prototype.toString.call(cmpFunc) !== '[object Function]') {
-                __warn('[list.sort] expected a parameter 0 with a type "function"')
-                return
+                util.__warn('[list.sort] expected a parameter 0 with a type "function"')
+                throw new TypeError('expected a parameter 0 with a type "function"')
             }
             // define partion method of qsort
             function partion(pLow, pHigh) {
@@ -1087,11 +1060,11 @@
                     return value.concat(acp)
                 }
                 function trampoline(func, arg) {
-                    __log('trampoline param: ', func, arg)
+                    // util.__log('trampoline param: ', func, arg)
                     let value = func.apply(func, arg)()
-                    __log('trampoline func.apply(func, arg)->', value)
+                    // util.__log('trampoline func.apply(func, arg)->', value)
                     if (Array.isArray(value)) {
-                        __verbose('trampoline value is array: ', value)
+                        // util.__verbose('trampoline value is array: ', value)
                         loopAtValue(value)
                         while (value.some(V => typeof V === 'function')) {
                             value = loopAtValue(value)
@@ -1137,13 +1110,13 @@
         }
 
         findFrom(pos, equFunc) {
-            if (typeof (pos) !== 'number' || !inRangeLR(pos, 0, this.size())) {
+            if (typeof (pos) !== 'number' || !util.inRangeLR(pos, 0, this.size())) {
                 return undefined
             }
             if (Object.prototype.toString.call(equFunc) !== '[object Function]') {
                 return undefined
             }
-            pos = ~~pos
+            pos = Math.round(pos)
             let res = undefined
             this.itr((index, node) => {
                 if (equFunc(node._data) && index >= pos) {
@@ -1172,13 +1145,13 @@
         }
 
         findIndexFrom(pos, equFunc) {
-            if (typeof (pos) !== 'number' || !inRangeLR(pos, 0, this.size())) {
+            if (typeof (pos) !== 'number' || !util.inRangeLR(pos, 0, this.size())) {
                 return -1
             }
             if (Object.prototype.toString.call(equFunc) !== '[object Function]') {
                 return -1
             }
-            pos = ~~pos
+            pos = Math.round(pos)
             let res = -1
             this.itr((index, node) => {
                 if (equFunc(node._data) && index >= pos) {
@@ -1192,7 +1165,7 @@
         back_concat(anotherListRef) {
             if (list.isList(anotherListRef)) {
                 if (anotherListRef._length === 0 || anotherListRef.HeadNode === null || anotherListRef.TailNode === null) {
-                    __warn('[list.back_concat] bad concat parameter 0')
+                    util.__warn('[list.back_concat] bad concat parameter 0')
                     return this
                 }
                 anotherListRef = list.clone(anotherListRef)
@@ -1208,7 +1181,7 @@
             } else if (Array.isArray(anotherListRef) && anotherListRef.length > 0) {
                 return this.back_concat(list.fromArray(anotherListRef))
             } else {
-                __warn('[list.back_concat] bad concat parameter 0, expected list or Array')
+                util.__warn('[list.back_concat] bad concat parameter 0, expected list or Array')
                 return
             }
         }
@@ -1216,7 +1189,7 @@
         front_concat(anotherListRef) {
             if (list.isList(anotherListRef)) {
                 if (anotherListRef._length === 0 || anotherListRef.HeadNode === null || anotherListRef.TailNode === null) {
-                    __warn('[list.front_concat] bad concat parameter 0')
+                    util.__warn('[list.front_concat] bad concat parameter 0')
                     return this
                 }
                 anotherListRef = list.clone(anotherListRef)
@@ -1232,7 +1205,7 @@
             } else if (Array.isArray(anotherListRef) && anotherListRef.length > 0) {
                 return this.front_concat(list.fromArray(anotherListRef))
             } else {
-                __warn('[list.front_concat] bad concat parameter 0, expected list or Array')
+                util.__warn('[list.front_concat] bad concat parameter 0, expected list or Array')
                 return
             }
         }
@@ -1241,29 +1214,29 @@
         concat(anotherListRef, position = this.size() - 1) {
             if (list.isList(anotherListRef)) {
                 if (anotherListRef === this) {
-                    __warn('[list.concat] intend to self concating which is not allowed, use [front_concat] or [back_concat] to instead')
+                    util.__warn('[list.concat] intend to self concating which is not allowed, use [front_concat] or [back_concat] to instead')
                     return
                 }
                 if (this.empty()) {
-                    __log('[list.concat], concat target on the empty this list')
+                    util.__log('[list.concat], concat target on the empty this list')
                     anotherListRef = list.clone(anotherListRef)
                     this.HeadNode = anotherListRef.HeadNode
                     this.TailNode = anotherListRef.TailNode
                     this._length = anotherListRef._length
                     return this
                 }
-                if (typeof (position) !== 'number' || Number.isNaN(position) || !inRangeLR(position, -1, this.size() - 1)) {
-                    __warn('[list.concat] failed with parameter 1 of null/errorRange/errorType')
+                if (typeof (position) !== 'number' || Number.isNaN(position) || !util.inRangeLR(position, -1, this.size() - 1)) {
+                    util.__warn('[list.concat] failed with parameter 1 of null/errorRange/errorType')
                     return
                 }
-                position = ~~position
+                position = Math.round(position)
                 if (position === -1) {
                     return this.front_concat(anotherListRef)
                 } else if (position === this.size() - 1) {
                     return this.back_concat(anotherListRef)
                 } else {
                     if (anotherListRef._length === 0 || anotherListRef.HeadNode === null || anotherListRef.TailNode === null) {
-                        __warn('bad concat target')
+                        util.__warn('bad concat target')
                         return
                     }
                     anotherListRef = list.clone(anotherListRef)
@@ -1300,7 +1273,7 @@
             } else if (Array.isArray(anotherListRef) && anotherListRef.length > 0) {
                 return this.concat(list.fromArray(anotherListRef), position)
             } else {
-                __warn('[list.front_concat] bad concat parameter 0, expected list or Array')
+                util.__warn('[list.front_concat] bad concat parameter 0, expected list or Array')
                 return
             }
         }
@@ -1308,7 +1281,7 @@
         swap(anotherListRef) {
             if (list.isList(anotherListRef)) {
                 if (anotherListRef === this) {
-                    __warn('[list.swap] intend to self swaping which is not allowed')
+                    util.__warn('[list.swap] intend to self swaping which is not allowed')
                     return
                 }
                 const pHead = this.HeadNode
@@ -1331,8 +1304,9 @@
             if (this.empty()) {
                 return
             }
+            const maxL = this.size() + ''.length + 1
             this.itr((idx, node) => {
-                needIndex ? console.log('index: ' + idx, node._data) : console.log(node._data)
+                needIndex ? console.log(('index: ' + idx).padEnd(maxL), node._data) : console.log(node._data)
             })
         }
 

@@ -1,6 +1,7 @@
 const chai = require('chai')
 const sinon = require('sinon')
 
+const util = require('../src/util')
 const list = require('../src/list')
 
 // mocha unit test
@@ -8,8 +9,16 @@ const expect = chai.expect
 
 const insertSeperator = ' --------------------------------------- '
 // test util
-const deepCopy = source => JSON.parse(JSON.stringify(source))
+const deepCopy = util.recursiveDeepCopy.bind(util)
 // const splitLine = console.log.bind(console, '%c################################################################', 'color: #409EFF')
+const hrt2S = t2 => t2[0] + t2[1] / 1e9 + ' s'
+const hrt2Ms = t2 => t2[0] * 1e3 + t2[1] / 1e6 + ' ms'
+const hrt2Us = t2 => t2[0] * 1e6 + t2[1] / 1e3 + ' μs'
+const benchmark = (func, desc, US = false) => {
+    const t = process.hrtime()
+    func()
+    console.log(desc + (US ? hrt2Us(process.hrtime(t)) : hrt2Ms(process.hrtime(t))))
+}
 const splitLine = () => {}
 const RDM = (lower, upper) => ~~(lower + Math.floor(Math.random() * (upper - lower + 1)))
 const repeat = (n, func, ...args) => {
@@ -131,15 +140,130 @@ const emptyInst4 = new list()
 const boolInst = new list()
 const strInst = new list()
 
+describe('util check:', () => {
+    it('recursiveDeepCopy', () => {
+        const o1 = {
+            a: Math.random(),
+            b: '' + Math.random(),
+            c: { k: 1, v: 2 },
+            d: [1, '', { k: 1, v: -1 }, undefined]
+        }
+        const o1_ = util.recursiveDeepCopy(o1)
+        expect(o1_).to.deep.equal(o1)
+        o1.a = -100
+        o1.b = '123'
+        expect(o1_.a).greaterThan(0)
+        o1.c.k = 100
+        expect(o1_.c.k).to.equal(1)
+        o1.d[0] = -1
+        o1.d[2].v = 0
+        expect(o1_.d).to.deep.equal([1, '', { k: 1, v: -1 }, undefined])
+        // ES6 objects
+        const o2 = {
+            a: new Map()
+        }
+        indexedRepeat(140, i => o2.a.set(i + '', Math.pow(i, i)))
+        const o2_ = util.recursiveDeepCopy(o2)
+        // console.log(o2_.a)
+        expect(o2_).to.deep.equal(o2)
+        expect(o2_.a.get('100')).to.equal(Math.pow(100, 100))
+        // self referenced object
+        const o3 = {}
+        o3.a = o3
+        const o3_ = util.recursiveDeepCopy(o3, true)
+        expect(o3_).to.deep.equal(o3)
+        expect(o3.a).to.deep.equal(o3)
+        const o4 = list.fromArray([1, 2, 5, 7, 24, 214, 7546, 14124])
+        const o4_ = util.recursiveDeepCopy(o4, true)
+        expect(o4_).to.deep.equal(o4)
+        // list of object
+        const ag = () => ({
+            p: Math.random(), q: { k: Math.random(), v: Math.random() }, v: [Math.random(), Math.random()]
+        })
+        const o5 = list.fromArray([ag(), ag(), ag(), ag(), ag(), ag()])
+        const o5_ = util.recursiveDeepCopy(o5, true)
+        expect(o5_).to.deep.equal(o5)
+        // console.log(o5_)
+        // list of selt-ref object
+        const srag = () => {
+            const t = { p: Math.random(), q: { k: Math.random(), v: Math.random() }, v: [Math.random(), Math.random()] }
+            t.q.sr = t
+            t.v.push(t)
+            return t
+        }
+        const o6 = list.fromArray([srag(), srag(), srag(), srag(), srag(), srag()])
+        const o6_ = util.recursiveDeepCopy(o6, true)
+        expect(o6_).to.deep.equal(o6)
+        // console.log(o6_.HeadNode._data)
+    })
+    it.skip('benchmark recursiveDeepCopy & _.cloneDeep', () => {
+        const geo = () => ({
+            a: Math.random(),
+            b: '' + Math.random(),
+            c: { k: Math.random(), v: 2 * Math.random() },
+            d: [Math.random() * 10, '' + Math.random(), { k: Math.random(), v: -1 * Math.random() }, undefined]
+        })
+        const lcd = require('C:\\Users\\Senmyu\\AppData\\Roaming\\npm\\node_modules\\lodash').cloneDeep
+        const t1 = process.hrtime()
+        indexedRepeat(10000, () => {
+            util.recursiveDeepCopy(geo())
+        })
+        console.log('    √ recursiveDeepCopy light obj [1e4] '.padEnd(45)+ hrt2Ms(process.hrtime(t1)))
+        const t2 = process.hrtime()
+        indexedRepeat(10000, () => {
+            lcd(geo())
+        })
+        console.log('    √ _.cloneDeep light obj [1e4] '.padEnd(45) + hrt2Ms(process.hrtime(t2)))
+        // heavy obj
+        const ho = require('random-object')
+        const t3 = process.hrtime()
+        indexedRepeat(20, () => {
+            util.recursiveDeepCopy(ho.randomObject(100, 100))
+        })
+        console.log('    √ recursiveDeepCopy heavy obj [20] '.padEnd(45) + hrt2Ms(process.hrtime(t3)))
+        const t4 = process.hrtime()
+        indexedRepeat(20, () => {
+            lcd(ho.randomObject(100, 100))
+        })
+        console.log('    √ _.cloneDeep heavy obj [20] '.padEnd(45) + hrt2Ms(process.hrtime(t4)))
+    })
+    it('fast swap: swapPM', () => {
+        // number
+        const a1 = {
+            p: 10
+        }
+        const b1 = {
+            p: 103
+        }
+        util.swapPM(a1, b1, 'p')
+        expect(a1.p).to.equal(103)
+        expect(b1.p).to.equal(10)
+    })
+    it.skip('benchmark swapPM & swapNM', () => {
+        const ag = () => ({
+            p: Math.random()
+        })
+        const bg = () => ({
+            p: Math.random()
+        })
+        benchmark(() => {
+            indexedRepeat(100, i => util.swapPM(ag(), bg()))
+        }, '    √ swapPM [1e5] '.padEnd(30), true)
+        benchmark(() => {
+            indexedRepeat(100, i => util.swapNM(ag(), bg()))
+        }, '    √ swapNM [1e5] '.padEnd(30), true)
+    })
+})
+
 describe('class list test: ', () => {
-    it('list::[static]isList with right param' + insertSeperator + 'expected passing through', () => {
+    it('list::[static]isList with right param', () => {
         expect(list.isList(new list())).to.be.true
         expect(list.isList(new list(1))).to.be.true
         expect(list.isList(new list(anyArr))).to.be.true
         class list_ extends list { }
         expect(list.isList(new list_())).to.be.true
     })
-    it('list::[static]isList with bad param' + insertSeperator + 'expected not passing through', () => {
+    it('list::[static]isList with bad param', () => {
         expect(list.isList()).to.be.false
         expect(list.isList(null)).to.be.false
         expect(list.isList([])).to.be.false
@@ -151,7 +275,7 @@ describe('class list test: ', () => {
         expect(list.isList(true)).to.be.false
         expect(list.isList(() => { })).to.be.false
     })
-    it('list::[static]clone' + insertSeperator + 'works correctly', () => {
+    it('list::[static]clone', () => {
         const obj1 = { a: 1 }
         const obj2 = { b: 2 }
         const a = new list([obj1, obj2])
@@ -161,7 +285,7 @@ describe('class list test: ', () => {
         expect(a.at(1)).to.deep.equal(b.at(1))
         expect(a.at(1) === b.at(1)).to.be.false
     })
-    it('list::constructor(integer)' + insertSeperator + 'works correctly', () => {
+    it('list::constructor(integer)', () => {
         let i = 0
         instB.pushBack(1)
         instB.pushBack(2)
@@ -176,7 +300,7 @@ describe('class list test: ', () => {
         while (i < instB.size())
             expect(instB.at(i++)).to.equal(i)
     })
-    it('list::constructor(object)' + insertSeperator + 'works correctly', () => {
+    it('list::constructor(object)', () => {
         let i = 0
         instA.pushBack($seirOBJ(0))
         instA.pushBack($seirOBJ(1))
@@ -191,7 +315,7 @@ describe('class list test: ', () => {
         while (i < instA.size())
             expect(instA.at(i++).a).to.equal(i - 1)
     })
-    it('list::constructor(bool)' + insertSeperator + 'works correctly', () => {
+    it('list::constructor(bool)', () => {
         let i = 0
         boolInst.pushBack(true)
         boolInst.pushBack(true)
@@ -214,7 +338,7 @@ describe('class list test: ', () => {
         expect(boolInst.at(i++)).to.be.true
         expect(boolInst.at(i++)).to.be.false
     })
-    it('list::constructor(string)' + insertSeperator + 'works correctly', () => {
+    it('list::constructor(string)', () => {
         let i = 7
         let rec = []
         while (i-- > 0) {
@@ -222,47 +346,58 @@ describe('class list test: ', () => {
             rec.push(tmp)
             strInst.pushBack(tmp)
         }
-        while (i++ < 7)
+        while (i++ < 6)
             expect(strInst.at(i)).to.equal(rec[i])
     })
-    it('list::constructor(null)' + insertSeperator + 'works correctly', () => {
+    it('list::constructor(null)', () => {
         expect(emptyInst.size()).to.equal(0)
         expect(emptyInst.HeadNode).to.equal(null)
         expect(emptyInst.TailNode).to.equal(null)
     })
-    it('list::constructor(list<any>&)' + insertSeperator + 'works correctly', () => {
+    it('list::constructor(list<any>&)', () => {
         const cpi = new list(instA)
         let i = 5
         while (i-- > 0)
             expect(cpi.at(i)).to.deep.equal(instA.at(i))
     })
-    it('list::constructor(array<any>&)' + insertSeperator + 'works correctly', () => {
+    it('list::constructor(array<any>&)', () => {
         const cpi = new list(anyArr)
         let i = anyArr.length - 1
         while (i-- > 0)
             expect(cpi.at(i)).to.deep.equal(anyArr[i])
     })
-    it('list::at(index) out_of_range test ::at(-N*)' + insertSeperator + 'check correctly', () => {
-        expect(instB.at(-1)).to.equal(undefined)
+    it('list::at(index) out_of_range test ::at(-N*)', () => {
+        try {
+            instB.at(-1)
+        } catch (error) {
+            expect(error).to.be.instanceof(RangeError)
+        }
     })
-    it('list::at(index) out_of_range test ::at(N* exceed this._length)' + insertSeperator + 'check correctly', () => {
-        expect(instB.at(10000)).to.equal(undefined)
+    it('list::at(index) out_of_range test ::at(N* exceed this._length)', () => {
+        try {
+            instB.at(10000)
+        } catch (error) {
+            expect(error).to.be.instanceof(RangeError)
+        }
     })
-    it('list::at(index) is not integer test ::at(float R)' + insertSeperator + 'floor correctly', () => {
+    it('list::at(index) is not integer test ::at(float R)', () => {
         expect(instB.at(1.25125)).to.deep.equal(instB.at(1))
-        expect(instB.at(1.95125)).to.deep.equal(instB.at(1))
+        expect(instB.at(1.95125)).to.deep.equal(instB.at(2))
     })
-    it('list::at(<type error>) test ::at(undefined)' + insertSeperator + 'check correctly', () => {
-        expect(instB.at()).to.equal(undefined)
-        expect(instB.at()).to.equal(undefined)
+    it('list::at(<type error>) test ::at(undefined)', () => {
+        try {
+            instB.at()
+        } catch (error) {
+            expect(error).to.be.instanceof(RangeError)
+        }
     })
-    it('list<object>::const_at(index)' + insertSeperator + 'returns const copies correctly', () => {
+    it('list<object>::const_at(index)', () => {
         instA.at(2).a = 100
         instA.const_at(1).a = 100
         expect(instA.at(1).a).to.not.equal(100)
         expect(instA.at(2).a).to.equal(100)
     })
-    it('list[index]' + insertSeperator + 'returns const copies correctly', () => {
+    it('list[index]', () => {
         const list1 = new list([0, 1,2,3,4,5,6,7,8,9,10])
         indexedRepeat(11, i => {
             expect(list1[i]).to.equal(i)
@@ -273,14 +408,14 @@ describe('class list test: ', () => {
         expect(list[null]).to.be.undefined
         expect(list[Infinity]).to.be.undefined
     })
-    it('list::fill(number)' + insertSeperator + 'works correctly', () => {
+    it('list::fill(number)', () => {
         const cpi = new list(instA)
         cpi.fill(Math.random())
         let i = cpi.size() - 1
         while (i-- > 0)
             expect(cpi.at(i)).to.be.a('number')
     })
-    it('list::fill(object)' + insertSeperator + 'works correctly', () => {
+    it('list::fill(object)', () => {
         const cpi = new list(instA)
         cpi.fill($sameObj())
         let i = cpi.size() - 1
@@ -289,21 +424,21 @@ describe('class list test: ', () => {
             i > 2 ? expect(cpi.at(i) === cpi.at(i - 1)).to.be.true : void (0)
         }
     })
-    it('list::fill(string)' + insertSeperator + 'works correctly', () => {
+    it('list::fill(string)', () => {
         const cpi = new list(instA)
         cpi.fill($randStr())
         let i = cpi.size() - 1
         while (i-- > 0)
             expect(cpi.at(i)).to.be.a('string')
     })
-    it('list::fill(bool)' + insertSeperator + 'works correctly', () => {
+    it('list::fill(bool)', () => {
         const cpi = new list(instA)
         cpi.fill($randBol())
         let i = cpi.size() - 1
         while (i-- > 0)
             expect(cpi.at(i)).to.be.a('boolean')
     })
-    it('list::fill(any, start)' + insertSeperator + 'works correctly', () => {
+    it('list::fill(any, start)', () => {
         const cpi = new list(instA)
         cpi.fill(deepCopy(anyArr), 2)
         expect(cpi.at(0)).to.deep.equal(instA.at(0))
@@ -312,7 +447,7 @@ describe('class list test: ', () => {
         while (i-- > 2)
             expect(cpi.at(i)).to.deep.equal(anyArr)
     })
-    it('list::fill(any, start, end)' + insertSeperator + 'works correctly', () => {
+    it('list::fill(any, start, end)', () => {
         const cpi = new list(instA)
         cpi.fill(deepCopy(anyArr), 2, 4)
         expect(cpi.at(0)).to.deep.equal(instA.at(0))
@@ -323,18 +458,18 @@ describe('class list test: ', () => {
         expect(cpi.at(3)).to.deep.equal(anyArr)
         expect(cpi.at(4)).to.deep.equal(anyArr)
     })
-    it('list::fill(any, start, end, true)' + insertSeperator + 'could extend this list', () => {
+    it('list::fill(any, start, end, true)', () => {
         const kk = new list([0, 1, 2, 3, 4, 5, 6, 7])
         kk.fill(-1, 0, 140, true)
         let i = kk.size() - 1
         while (i-- > 0)
             expect(kk.at(i)).to.be.a('number')
     })
-    it('list::fill -> this&' + insertSeperator + 'works correctly', () => {
+    it('list::fill -> this&', () => {
         const kk = new list([0, 1, 2, 3, 4, 5, 6, 7])
         expect(kk.fill(-1, 0, 140, true) === kk).to.be.true
     })
-    it('list::pushFront all func' + insertSeperator + 'works correctly', () => {
+    it('list::pushFront all func', () => {
         emptyInst.clear()
         try {
             emptyInst.pushFront()
@@ -357,7 +492,7 @@ describe('class list test: ', () => {
         expect(emptyInst.at(2)).to.equal(1)
         expect(emptyInst.pushFront(4) === emptyInst).to.be.true
     })
-    it('list::pushBack all func' + insertSeperator + 'works correctly', () => {
+    it('list::pushBack all func', () => {
         emptyInst.clear()
         try {
             emptyInst.pushBack()
@@ -379,9 +514,13 @@ describe('class list test: ', () => {
         expect(emptyInst.at(2)).to.equal(3)
         expect(emptyInst.pushBack(4) === emptyInst).to.be.true
     })
-    it('list::insert all func' + insertSeperator + 'works correctly', () => {
+    it('list::insert all func', () => {
         emptyInst.clear()
-        emptyInst.insert(0, -1)
+        try {
+            emptyInst.insert(0, -1)
+        } catch (error) {
+            expect(error).to.be.instanceof(TypeError)
+        }
         expect(emptyInst.data).to.deep.equal([])
         emptyInst.pushBack(1).pushBack(2).pushBack(3)
         emptyInst.insert(0, 0)
@@ -392,21 +531,21 @@ describe('class list test: ', () => {
         expect(emptyInst.data).to.deep.equal([1, 0, 2, -4, 3, -3])
         expect(emptyInst.insert(-20, 3) === emptyInst).to.be.true
     })
-    it('list::popFront all func' + insertSeperator + 'works correctly', () => {
+    it('list::popFront all func', () => {
         emptyInst.clear()
         expect(emptyInst.popFront()).to.be.null
         emptyInst.pushBack(1).pushBack(2).pushBack(3)
         expect(emptyInst.popFront()).to.equal(1)
         expect(emptyInst.data).to.deep.equal([2, 3])
     })
-    it('list::popBack all func' + insertSeperator + 'works correctly', () => {
+    it('list::popBack all func', () => {
         emptyInst.clear()
         expect(emptyInst.popBack()).to.be.null
         emptyInst.pushBack(1).pushBack(2).pushBack(3)
         expect(emptyInst.popBack()).to.equal(3)
         expect(emptyInst.data).to.deep.equal([1, 2])
     })
-    it.only('list::pop*' + insertSeperator + 'works correctly', () => {
+    it('list::pop*', () => {
         emptyInst.clear()
         expect(emptyInst.size()).to.equal(0)
         // spec pop till size = 0
@@ -427,7 +566,7 @@ describe('class list test: ', () => {
         emptyInst.popBack()
         expect(emptyInst.size()).to.equal(0)
     })
-    it('list::drop all func' + insertSeperator + 'works correctly', () => {
+    it('list::drop all func', () => {
         emptyInst.clear()
         expect(emptyInst.drop().data).to.deep.equal([])
         emptyInst.pushBack(1).pushBack(2).pushBack(3)
@@ -439,7 +578,7 @@ describe('class list test: ', () => {
         expect(emptyInst.drop(3).data).to.deep.equal([])
         expect(emptyInst.drop(4).data).to.deep.equal([])
     })
-    it('list::dropRight all func' + insertSeperator + 'works correctly', () => {
+    it('list::dropRight all func', () => {
         emptyInst.clear()
         expect(emptyInst.dropRight().data).to.deep.equal([])
         emptyInst.pushBack(1).pushBack(2).pushBack(3)
@@ -459,10 +598,10 @@ describe('class list test: ', () => {
         expect(emptyInst.drop(2)).to.deep.equal(list.fromArray([3, 4]))
         expect(emptyInst.dropRight(2)).to.deep.equal(list.fromArray([1, 2]))
     })
-    it('list::itr all func' + insertSeperator + 'works correctly', () => {
+    it('list::itr all func', () => {
         // emptyInst.clear().back_concat([0, 1, 2, 3, 4, 5, 6, 7, 8, 9])
     })
-    it('list::splice all func' + insertSeperator + 'works correctly', () => {
+    it('list::splice all func', () => {
         emptyInst.clear()
         repeat(1000, () => {
             emptyInst.pushFront($randStr())
@@ -548,7 +687,7 @@ describe('class list test: ', () => {
             expect(tmp).to.deep.equal(ans)
         })
     })
-    it('list::concat / list::front_concat / list::back_concat' + insertSeperator + 'works correctly', () => {
+    it('list::concat / list::front_concat / list::back_concat', () => {
         const list1 = list.fromArray([1, 2, 3, 4, 5, 6, 7, 8, 9])
         const list2 = list.fromArray([-1, -2, -3, -4, -5, -6, -7, -8, -9])
         const list3 = list.fromArray(['a', 'b', 'c', 'd', 'e'])
@@ -596,7 +735,7 @@ describe('class list test: ', () => {
             .concat(list.fromArray([4, 5]), 2)
             .concat([6, 7, 8], 2).data).to.deep.equal([1, 2, 3, 6, 7, 8, 4, 5])
     })
-    it('list::remove all func' + insertSeperator + 'works correctly', () => {
+    it('list::remove all func', () => {
         const list1 = new list()
         list1.remove()
         expect(list1.data).to.deep.equal([])
@@ -615,7 +754,7 @@ describe('class list test: ', () => {
         list2.remove(2).remove(1).remove(0)
         expect(list2.data).to.deep.equal([])
     })
-    it('list::remove all func' + insertSeperator + 'works correctly', () => {
+    it('list::remove all func', () => {
         const r1 = new list([])
         const r2 = new list([1])
         const r3 = new list([1, 2])
@@ -628,7 +767,7 @@ describe('class list test: ', () => {
         expect(r4.reverse().data).to.deep.equal([5, 4, 3, 2, 1])
         expect(r5.reverse().data).to.deep.equal(Larr.reverse())
     })
-    it('list::forEachTween all func' + insertSeperator + 'works correctly', () => {
+    it('list::forEachTween all func', () => {
         let sum = 0
         let indexarr = []
         const spy1 = sinon.spy((x1, x2, i1, i2, that) => {
@@ -638,7 +777,7 @@ describe('class list test: ', () => {
         })
         const list1 = new list([1])
         const list2 = new list([1, 2])
-        const list3 = new list([1, 2, 3, 4, 5, 6, 7, 8, 9])// 3+5+7+9+11+13+15+17=80
+        const list3 = new list([1, 2, 3, 4, 5, 6, 7, 8, 9])  // 3+5+7+9+11+13+15+17=80
         list1.forEachTween(spy1)
         expect(spy1.called).to.be.false
         //
@@ -655,7 +794,7 @@ describe('class list test: ', () => {
         expect(sum).to.equal(80)
         expect(indexarr).to.deep.equal([0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8])
     })
-    it('list::sort all func' + insertSeperator + 'works correctly', () => {
+    it('list::sort all func', () => {
         const list1 = new list([1])
         //
         const list_allsame1 = new list([1, 1])
@@ -723,242 +862,242 @@ describe('class list test: ', () => {
         list_obj.forEachTween(spy2)
         expect(spy2.callCount).to.equal(7)
     })
-    // it('benchmark push number', () => {
-    //     const a = new Array()
-    //     const b = new list()
-    //     const c = new list()
-    //     console.time('array push 10^6 number')
-    //     repeat(100000, () => a.push(0))
-    //     console.timeEnd('array push 10^6 number')
-    //     //
-    //     console.time('list push 10^6 number')
-    //     repeat(100000, () => b.pushBack(0))
-    //     console.timeEnd('list push 10^6 number')
-    //     //
-    //     console.time('list push front 10^6 number')
-    //     repeat(100000, () => c.pushFront(0))
-    //     console.timeEnd('list push front 10^6 number')
-    //     splitLine()
-    //     //
-    //     console.time('array clear')
-    //     a.splice(0, a.length - 1)
-    //     console.timeEnd('array clear')
-    //     //
-    //     console.time('list clear')
-    //     b.clear()
-    //     console.timeEnd('list clear')
-    //     splitLine()
-    // })
-    // it('benchmark push string easy', () => {
-    //     const a = new Array()
-    //     const b = new list()
-    //     const c = new list()
-    //     console.time('array push 10^6 x 8 bytes string')
-    //     repeat(100000, () => a.push($strFX(8)))
-    //     console.timeEnd('array push 10^6 x 8 bytes string')
-    //     //
-    //     console.time('list push 10^6 x 8 bytes string')
-    //     repeat(100000, () => b.pushBack($strFX(8)))
-    //     console.timeEnd('list push 10^6 x 8 bytes string')
-    //     //
-    //     console.time('list push front 10^6 x 8 bytes string')
-    //     repeat(100000, () => c.pushFront($strFX(8)))
-    //     console.timeEnd('list push front 10^6 x 8 bytes string')
-    //     splitLine()
-    //     //
-    //     console.time('array clear')
-    //     a.splice(0, a.length - 1)
-    //     console.timeEnd('array clear')
-    //     //
-    //     console.time('list clear')
-    //     b.clear()
-    //     console.timeEnd('list clear')
-    //     splitLine()
-    // })
-    // it('benchmark push string heavy', () => {
-    //     const a = new Array()
-    //     const b = new list()
-    //     const c = new list()
-    //     console.time('array push 10^6 x 32 bytes string')
-    //     repeat(100000, () => a.push($strFX(32)))
-    //     console.timeEnd('array push 10^6 x 32 bytes string')
-    //     //
-    //     console.time('list push 10^6 x 32 bytes string')
-    //     repeat(100000, () => b.pushBack($strFX(32)))
-    //     console.timeEnd('list push 10^6 x 32 bytes string')
-    //     //
-    //     console.time('list push front 10^6 x 32 bytes string')
-    //     repeat(100000, () => c.pushFront($strFX(32)))
-    //     console.timeEnd('list push front 10^6 x 32 bytes string')
-    //     splitLine()
-    //     //
-    //     console.time('array clear')
-    //     a.splice(0, a.length - 1)
-    //     console.timeEnd('array clear')
-    //     //
-    //     console.time('list clear')
-    //     b.clear()
-    //     console.timeEnd('list clear')
-    //     splitLine()
-    // })
-    // it('benchmark random splicing on length 10^5', () => {
-    //     const a = new Array()
-    //     const b = new list()
-    //     // prep
-    //     indexedRepeat(10000, i => a.push(i))
-    //     indexedRepeat(10000, i => b.pushBack(i))
-    //     //
-    //     console.time('array random splicing')
-    //     repeat(1000, () => a.splice(RDM(0, a.length), RDM(0, 100)))
-    //     console.timeEnd('array random splicing')
-    //     //
-    //     console.time('list random splicing')
-    //     repeat(1000, () => b.splice(RDM(0, b.length), RDM(0, 100)))
-    //     console.timeEnd('list random splicing')
-    //     splitLine()
-    // })
-    // it('benchmark random splicing on length 10^5 with adding 10^5', () => {
-    //     const a = new Array()
-    //     const b = new list()
-    //     // prep
-    //     indexedRepeat(10000, i => a.push(i))
-    //     indexedRepeat(10000, i => b.pushBack(i))
-    //     // ...$seirNA(1000)
-    //     console.time('array random splicing with adding 10^5')
-    //     repeat(100, () => a.splice(RDM(0, a.length), RDM(0, 10), ...$seirNA(100)))
-    //     console.timeEnd('array random splicing with adding 10^5')
-    //     //
-    //     console.time('list random splicing with adding 10^5')
-    //     repeat(100, () => b.splice(RDM(0, b.length), RDM(0, 10), ...$seirNA(100)))
-    //     console.timeEnd('list random splicing with adding 10^5')
-    //     splitLine()
-    // })
-    // it('benchmark loop on length 10^6', () => {
-    //     const a = new Array()
-    //     const b = new list()
-    //     // prep
-    //     indexedRepeat(100000, i => a.push(i))
-    //     indexedRepeat(100000, i => b.pushBack(i))
-    //     //
-    //     console.time('array map1')
-    //     a.map((v, i) => v * i)
-    //     console.timeEnd('array map1')
-    //     //
-    //     console.time('list map1')
-    //     b.map((v, i) => v * i)
-    //     console.timeEnd('list map1')
-    //     splitLine()
-    //     //
-    //     console.time('array map2')
-    //     a.map((v, i) => Math.pow(v, 2) * Math.pow(i, 2))
-    //     console.timeEnd('array map2')
-    //     //
-    //     console.time('list map2')
-    //     b.map((v, i) => Math.pow(v, 2) * Math.pow(i, 2))
-    //     console.timeEnd('list map2')
-    //     splitLine()
-    //     //
-    //     console.time('array filter')
-    //     a.filter((v, i) => v * i > 10000)
-    //     console.timeEnd('array filter')
-    //     //
-    //     console.time('list filter')
-    //     b.filter((v, i) => v * i > 10000)
-    //     console.timeEnd('list filter')
-    //     splitLine()
-    //     //
-    //     let sum1 = 0
-    //     let sum2 = 0
-    //     console.time('array for...of loop1')
-    //     for (const v of a) {
-    //         sum1 += v
-    //     }
-    //     console.timeEnd('array for...of loop1')
-    //     //
-    //     console.time('list for...of loop1')
-    //     for (const v of b) {
-    //         sum2 += v
-    //     }
-    //     console.timeEnd('list for...of loop1')
-    //     splitLine()
-    // })
-    // it('benchmark sort with 10^5 complex object load', () => {
-    //     const arr1 = $nsoG(10000)
-    //     expect(arr1.length).to.equal(10000)
-    //     const list1 = new list(arr1)
-    //     console.time('arr<Object, 10^5> sort')
-    //     arr1.sort((a, b) => a.a - b.a)
-    //     console.timeEnd('arr<Object, 10^5> sort')
-    //     console.time('list<Object, 10^5> sort')
-    //     list1.sort((a, b) => a.a - b.a)
-    //     console.timeEnd('list<Object, 10^5> sort')
-    //     splitLine()
-    // })
-    // it('benchmark sort with 10^6 complex object load', () => {
-    //     const arr1 = $nsoG(100000)
-    //     expect(arr1.length).to.equal(100000)
-    //     const list1 = new list(arr1)
-    //     console.time('arr<Object, 10^6> sort')
-    //     arr1.sort((a, b) => a.a - b.a)
-    //     console.timeEnd('arr<Object, 10^6> sort')
-    //     console.time('list<Object, 10^6> sort')
-    //     list1.sort((a, b) => a.a - b.a)
-    //     console.timeEnd('list<Object, 10^6> sort')
-    //     splitLine()
-    // })
-    // it('benchmark sort with 2*10^5 load', () => {
-    //     const arr1 = $RDnumberG(20000)
-    //     const list1 = new list(arr1)
-    //     console.time('arr<Number, 2*10^5> sort')
-    //     arr1.sort()
-    //     console.timeEnd('arr<Number, 2*10^5> sort')
-    //     console.time('list<Number, 2*10^5> sort')
-    //     list1.sort()
-    //     console.timeEnd('list<Number, 2*10^5> sort')
-    //     splitLine()
-    // })
-    // it('benchmark sort with 4*10^5 load', () => {
-    //     const arr1 = $RDnumberG(40000)
-    //     const list1 = new list(arr1)
-    //     console.time('arr<Number, 4*10^5> sort')
-    //     arr1.sort()
-    //     console.timeEnd('arr<Number, 4*10^5> sort')
-    //     console.time('list<Number, 4*10^5> sort')
-    //     list1.sort()
-    //     console.timeEnd('list<Number, 4*10^5> sort')
-    //     splitLine()
-    // })
-    // it('benchmark sort with 8*10^5 load', () => {
-    //     const arr1 = $RDnumberG(80000)
-    //     const list1 = new list(arr1)
-    //     console.time('arr<Number, 8*10^5> sort')
-    //     arr1.sort()
-    //     console.timeEnd('arr<Number, 8*10^5> sort')
-    //     console.time('list<Number, 8*10^5> sort')
-    //     list1.sort()
-    //     console.timeEnd('list<Number, 8*10^5> sort')
-    //     splitLine()
-    // })
-    // it('benchmark sort with 10^6 load', () => {
-    //     const arr1 = $RDnumberG(100000)
-    //     const list1 = new list(arr1)
-    //     console.time('arr<Number, 10^6> sort')
-    //     arr1.sort()
-    //     console.timeEnd('arr<Number, 10^6> sort')
-    //     console.time('list<Number, 10^6> sort')
-    //     list1.sort()
-    //     console.timeEnd('list<Number, 10^6> sort')
-    //     splitLine()
-    // })
-    // it('benchmark sort with 10^7 load', () => {
-    //     const arr1 = $RDnumberG(1000000)
-    //     const list1 = new list(arr1)
-    //     console.time('arr<Number, 10^7> sort')
-    //     arr1.sort()
-    //     console.timeEnd('arr<Number, 10^7> sort')
-    //     console.time('list<Number, 10^7> sort')
-    //     list1.sort()
-    //     console.timeEnd('list<Number, 10^7> sort')
-    //     splitLine()
-    // })
+    it.skip('benchmark push number', () => {
+        const a = new Array()
+        const b = new list()
+        const c = new list()
+        console.time('array push 10^6 number')
+        repeat(100000, () => a.push(0))
+        console.timeEnd('array push 10^6 number')
+        //
+        console.time('list push 10^6 number')
+        repeat(100000, () => b.pushBack(0))
+        console.timeEnd('list push 10^6 number')
+        //
+        console.time('list push front 10^6 number')
+        repeat(100000, () => c.pushFront(0))
+        console.timeEnd('list push front 10^6 number')
+        splitLine()
+        //
+        console.time('array clear')
+        a.splice(0, a.length - 1)
+        console.timeEnd('array clear')
+        //
+        console.time('list clear')
+        b.clear()
+        console.timeEnd('list clear')
+        splitLine()
+    })
+    it.skip('benchmark push string easy', () => {
+        const a = new Array()
+        const b = new list()
+        const c = new list()
+        console.time('array push 10^6 x 8 bytes string')
+        repeat(100000, () => a.push($strFX(8)))
+        console.timeEnd('array push 10^6 x 8 bytes string')
+        //
+        console.time('list push 10^6 x 8 bytes string')
+        repeat(100000, () => b.pushBack($strFX(8)))
+        console.timeEnd('list push 10^6 x 8 bytes string')
+        //
+        console.time('list push front 10^6 x 8 bytes string')
+        repeat(100000, () => c.pushFront($strFX(8)))
+        console.timeEnd('list push front 10^6 x 8 bytes string')
+        splitLine()
+        //
+        console.time('array clear')
+        a.splice(0, a.length - 1)
+        console.timeEnd('array clear')
+        //
+        console.time('list clear')
+        b.clear()
+        console.timeEnd('list clear')
+        splitLine()
+    })
+    it.skip('benchmark push string heavy', () => {
+        const a = new Array()
+        const b = new list()
+        const c = new list()
+        console.time('array push 10^6 x 32 bytes string')
+        repeat(100000, () => a.push($strFX(32)))
+        console.timeEnd('array push 10^6 x 32 bytes string')
+        //
+        console.time('list push 10^6 x 32 bytes string')
+        repeat(100000, () => b.pushBack($strFX(32)))
+        console.timeEnd('list push 10^6 x 32 bytes string')
+        //
+        console.time('list push front 10^6 x 32 bytes string')
+        repeat(100000, () => c.pushFront($strFX(32)))
+        console.timeEnd('list push front 10^6 x 32 bytes string')
+        splitLine()
+        //
+        console.time('array clear')
+        a.splice(0, a.length - 1)
+        console.timeEnd('array clear')
+        //
+        console.time('list clear')
+        b.clear()
+        console.timeEnd('list clear')
+        splitLine()
+    })
+    it.skip('benchmark random splicing on length 10^5', () => {
+        const a = new Array()
+        const b = new list()
+        // prep
+        indexedRepeat(10000, i => a.push(i))
+        indexedRepeat(10000, i => b.pushBack(i))
+        //
+        console.time('array random splicing')
+        repeat(1000, () => a.splice(RDM(0, a.length), RDM(0, 100)))
+        console.timeEnd('array random splicing')
+        //
+        console.time('list random splicing')
+        repeat(1000, () => b.splice(RDM(0, b.length), RDM(0, 100)))
+        console.timeEnd('list random splicing')
+        splitLine()
+    })
+    it.skip('benchmark random splicing on length 10^5 with adding 10^5', () => {
+        const a = new Array()
+        const b = new list()
+        // prep
+        indexedRepeat(10000, i => a.push(i))
+        indexedRepeat(10000, i => b.pushBack(i))
+        // ...$seirNA(1000)
+        console.time('array random splicing with adding 10^5')
+        repeat(100, () => a.splice(RDM(0, a.length), RDM(0, 10), ...$seirNA(100)))
+        console.timeEnd('array random splicing with adding 10^5')
+        //
+        console.time('list random splicing with adding 10^5')
+        repeat(100, () => b.splice(RDM(0, b.length), RDM(0, 10), ...$seirNA(100)))
+        console.timeEnd('list random splicing with adding 10^5')
+        splitLine()
+    })
+    it.skip('benchmark loop on length 10^6', () => {
+        const a = new Array()
+        const b = new list()
+        // prep
+        indexedRepeat(100000, i => a.push(i))
+        indexedRepeat(100000, i => b.pushBack(i))
+        //
+        console.time('array map1')
+        a.map((v, i) => v * i)
+        console.timeEnd('array map1')
+        //
+        console.time('list map1')
+        b.map((v, i) => v * i)
+        console.timeEnd('list map1')
+        splitLine()
+        //
+        console.time('array map2')
+        a.map((v, i) => Math.pow(v, 2) * Math.pow(i, 2))
+        console.timeEnd('array map2')
+        //
+        console.time('list map2')
+        b.map((v, i) => Math.pow(v, 2) * Math.pow(i, 2))
+        console.timeEnd('list map2')
+        splitLine()
+        //
+        console.time('array filter')
+        a.filter((v, i) => v * i > 10000)
+        console.timeEnd('array filter')
+        //
+        console.time('list filter')
+        b.filter((v, i) => v * i > 10000)
+        console.timeEnd('list filter')
+        splitLine()
+        //
+        let sum1 = 0
+        let sum2 = 0
+        console.time('array for...of loop1')
+        for (const v of a) {
+            sum1 += v
+        }
+        console.timeEnd('array for...of loop1')
+        //
+        console.time('list for...of loop1')
+        for (const v of b) {
+            sum2 += v
+        }
+        console.timeEnd('list for...of loop1')
+        splitLine()
+    })
+    it.skip('benchmark sort with 10^5 complex object load', () => {
+        const arr1 = $nsoG(10000)
+        expect(arr1.length).to.equal(10000)
+        const list1 = new list(arr1)
+        console.time('arr<Object, 10^5> sort')
+        arr1.sort((a, b) => a.a - b.a)
+        console.timeEnd('arr<Object, 10^5> sort')
+        console.time('list<Object, 10^5> sort')
+        list1.sort((a, b) => a.a - b.a)
+        console.timeEnd('list<Object, 10^5> sort')
+        splitLine()
+    })
+    it.skip('benchmark sort with 10^6 complex object load', () => {
+        const arr1 = $nsoG(100000)
+        expect(arr1.length).to.equal(100000)
+        const list1 = new list(arr1)
+        console.time('arr<Object, 10^6> sort')
+        arr1.sort((a, b) => a.a - b.a)
+        console.timeEnd('arr<Object, 10^6> sort')
+        console.time('list<Object, 10^6> sort')
+        list1.sort((a, b) => a.a - b.a)
+        console.timeEnd('list<Object, 10^6> sort')
+        splitLine()
+    })
+    it.skip('benchmark sort with 2*10^5 load', () => {
+        const arr1 = $RDnumberG(20000)
+        const list1 = new list(arr1)
+        console.time('arr<Number, 2*10^5> sort')
+        arr1.sort()
+        console.timeEnd('arr<Number, 2*10^5> sort')
+        console.time('list<Number, 2*10^5> sort')
+        list1.sort()
+        console.timeEnd('list<Number, 2*10^5> sort')
+        splitLine()
+    })
+    it.skip('benchmark sort with 4*10^5 load', () => {
+        const arr1 = $RDnumberG(40000)
+        const list1 = new list(arr1)
+        console.time('arr<Number, 4*10^5> sort')
+        arr1.sort()
+        console.timeEnd('arr<Number, 4*10^5> sort')
+        console.time('list<Number, 4*10^5> sort')
+        list1.sort()
+        console.timeEnd('list<Number, 4*10^5> sort')
+        splitLine()
+    })
+    it.skip('benchmark sort with 8*10^5 load', () => {
+        const arr1 = $RDnumberG(80000)
+        const list1 = new list(arr1)
+        console.time('arr<Number, 8*10^5> sort')
+        arr1.sort()
+        console.timeEnd('arr<Number, 8*10^5> sort')
+        console.time('list<Number, 8*10^5> sort')
+        list1.sort()
+        console.timeEnd('list<Number, 8*10^5> sort')
+        splitLine()
+    })
+    it.skip('benchmark sort with 10^6 load', () => {
+        const arr1 = $RDnumberG(100000)
+        const list1 = new list(arr1)
+        console.time('arr<Number, 10^6> sort')
+        arr1.sort()
+        console.timeEnd('arr<Number, 10^6> sort')
+        console.time('list<Number, 10^6> sort')
+        list1.sort()
+        console.timeEnd('list<Number, 10^6> sort')
+        splitLine()
+    })
+    it.skip('benchmark sort with 10^7 load', () => {
+        const arr1 = $RDnumberG(1000000)
+        const list1 = new list(arr1)
+        console.time('arr<Number, 10^7> sort')
+        arr1.sort()
+        console.timeEnd('arr<Number, 10^7> sort')
+        console.time('list<Number, 10^7> sort')
+        list1.sort()
+        console.timeEnd('list<Number, 10^7> sort')
+        splitLine()
+    })
 })
