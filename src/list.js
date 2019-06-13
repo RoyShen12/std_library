@@ -1300,6 +1300,10 @@
             return JSON.stringify(this.toArray())
         }
 
+        toString() {
+            return this.toArray().toString()
+        }
+
         consolePrint(needIndex) {
             if (this.empty()) {
                 return
