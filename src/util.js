@@ -29,7 +29,14 @@
     inRangeR: (target, rangeS, rangeE) => target > rangeS && target <= rangeE,
     inRangeLR: (target, rangeS, rangeE) => target >= rangeS && target <= rangeE,
     deepCopy: source => JSON.parse(JSON.stringify(source)),
-    recursiveDeepCopy(o, needCopyReference = false) {  //  no arrow function for initially grasping this
+    /**
+     * no arrow function for initially grasping this
+     * @template T
+     * @param {T} o
+     * @param {boolean} needCopyReference
+     * @returns {T}
+     */
+    recursiveDeepCopy(o, needCopyReference = false) {
       var newO, i
       if (typeof o !== 'object') return o
       if (!o) return o
