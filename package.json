@@ -2,7 +2,7 @@
   "name": "std_library",
   "version": "0.0.1",
   "description": "a JavaScript container library",
-  "main": "mocha",
+  "main": "index.js",
   "directories": {
     "test": "test"
   },
