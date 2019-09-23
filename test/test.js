@@ -203,7 +203,7 @@ describe('util check:', () => {
             c: { k: Math.random(), v: 2 * Math.random() },
             d: [Math.random() * 10, '' + Math.random(), { k: Math.random(), v: -1 * Math.random() }, undefined]
         })
-        const lcd = require('C:\\Users\\Senmyu\\AppData\\Roaming\\npm\\node_modules\\lodash').cloneDeep
+        const lcd = require('lodash').cloneDeep
         const t1 = process.hrtime()
         indexedRepeat(10000, () => {
             util.recursiveDeepCopy(geo())
