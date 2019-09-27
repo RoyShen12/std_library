@@ -1,6 +1,6 @@
 {
   "name": "std_library",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "description": "a JavaScript container library",
   "main": "index.js",
   "directories": {

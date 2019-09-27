@@ -1,4 +1,5 @@
 (function () {
+  const util = require('./_util')
   /**
    * - the node structure to composite a list
    * 
@@ -77,4 +78,4 @@
   }
 
   module.exports = _Node
-})
+}())
