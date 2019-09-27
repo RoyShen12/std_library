@@ -3,20 +3,22 @@
 ## Install
 
 ```bash
-$ npm install std_library
+$ npm install --save std_library
 ```
 
 # Introduce
 
 std_library is a JavaScript container library.  
 
-completed component: list (Doubly Linked List).
+completed component: list (Doubly Linked List).  
+
+component on the way: queue, stack, tree, binary tree, quadtree.
 
 # Basic usage
 
-## list
+## <inner>_Node
 
-a list is composed by the inner class `_Node`.
+the basic element of each container is the inner class `_Node`.
 
 ```ts
 class _Node<T> {
@@ -27,6 +29,8 @@ class _Node<T> {
   public nextPtr: _Node
 }
 ```
+
+## list
 
 ```ts
 const { list } = require('std_library')

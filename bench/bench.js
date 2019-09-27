@@ -1,6 +1,6 @@
 const Benchmark = require('benchmark')
 
-const util = require('../src/util')
+const util = require('../src/inner/_util')
 const list = require('../src/list')
 const _ = require('lodash')
 const gro = require('random-object').randomObject

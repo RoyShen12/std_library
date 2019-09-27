@@ -1,5 +1,7 @@
 node_modules/
 coverage/
-.vs
-/.vscode
+.nyc_output/
+.vs/
+.vscode/
 .DS_Store
+.DS_Store?

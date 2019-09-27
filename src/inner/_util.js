@@ -11,7 +11,7 @@
 // CONDITIONS OF ANY KIND, either express or implied. See the License for the 
 // specific language governing permissions and limitations under the License.
 
-(function (glb) {
+(function () {
   const hasConsole = !!console
   // the debug flag
   // 0 - no debug    1 - normal info    2 - more info    3 - any info
@@ -23,7 +23,11 @@
     __log: __debug > 1 && hasConsole ? (...info) => console.log(...info) : () => void 0,
     __warn: __debug > 0 && hasConsole ? (...warn) => console.warn(...warn) : () => void 0,
     __error: hasConsole ? (...err) => console.error(...err) : () => void 0,
-    _isnan: (...num) => num.some(Number.isNaN(num)),
+
+    /**
+     * @param {number[]} num
+     */
+    _isnan: (...num) => num.some(Number.isNaN),
     inRange: (target, rangeS, rangeE) => target > rangeS && target < rangeE,
     inRangeL: (target, rangeS, rangeE) => target >= rangeS && target < rangeE,
     inRangeR: (target, rangeS, rangeE) => target > rangeS && target <= rangeE,
@@ -184,14 +188,6 @@
     }
   }
 
-  if (typeof define == 'function') {
-    define(function () { return util })
-  } else if (typeof module != 'undefined' && module.exports) {
-    module.exports = util
-  }
+  module.exports = util
 
-  glb.util ? void (0) : glb.util = util
-
-  return util
-
-}(typeof window == 'undefined' ? global : window))
+}())

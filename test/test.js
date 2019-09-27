@@ -1,7 +1,7 @@
 const chai = require('chai')
 const sinon = require('sinon')
 
-const util = require('../src/util')
+const util = require('../src/inner/_util')
 const list = require('../src/list')
 
 // mocha unit test
